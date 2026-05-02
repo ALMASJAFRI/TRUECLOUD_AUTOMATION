@@ -75,7 +75,7 @@ def center_cordinates(x,y,h,w):
     return (center_x, center_y)
 
 
-def is_logged_in(timeout=25):
+def is_logged_in(timeout=35):
     home = os.path.join(TEMPLATES_DIR, "Home.png")
     resized_image = upscale(home)
 

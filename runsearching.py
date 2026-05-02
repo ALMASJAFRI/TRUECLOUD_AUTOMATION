@@ -40,7 +40,7 @@ def search():
                 write_to_search(item, x, y, h, w)
                 clickbelow(x, y, h, w)
                 clickabove(x, y, h, w)
-                time.sleep(1)
+                time.sleep(1.5)
 
             return True
 
@@ -93,33 +93,35 @@ def clickabove(x, y, h, w):
     
     print(f"[DEBUG] dx={dx}, dy={dy}")
 
-    if 20 <= abs(dx) <= 50 and abs(dy) <= 40:
-        offset_x, offset_y = 80, +8
+    if abs(dx)<= 50:
+        offset_x, offset_y = 64, -2
         print("[INFO] Using alternate offset")
     else:
-        offset_x, offset_y = 95, -7
+        offset_x, offset_y = 95,-17
         print("[INFO] Using default offset")
 
+    click_open_camera()
     pyautogui.click(cx + offset_x, cy + offset_y)
+    click_open_camera()
     return True
 
-def get_playcoordinates():
-    play=os.path.join(TEMPLATES_DIR,"play_button.png")
-    image=cv2.imread(play)
-    scaled=upscale(image)
+def click_open_camera():
+    template=os.path.join(TEMPLATES_DIR,"camera_open.png")
+    resize=upscale(template)
 
     screenshot_view = pyautogui.screenshot()
-    screenshot_cv = cv2.cvtColor(np.array(screenshot_view),cv2.COLOR_BGR2GRAY)
+    screenshot_cv = cv2.cvtColor(np.array(screenshot_view), cv2.COLOR_BGR2GRAY)
 
-    result = cv2.matchTemplate(screenshot_cv, scaled, cv2.TM_CCOEFF_NORMED)
-    _,max_val, _, max_loc = cv2.minMaxLoc(result)
+    result = cv2.matchTemplate(screenshot_cv, resize, cv2.TM_CCOEFF_NORMED)
+    _, max_val, _, max_loc = cv2.minMaxLoc(result)
 
-    if max_val >= 0.5:
+    if max_val >= MATCHING_THRESHOLD:
         x, y = max_loc
-        h, w = scaled.shape[:2]
-        return x,y,h,w
-    return None,None,None,None
-
+        h, w = resize.shape[:2]
+        doubleclick(x,y,h,w)
+        return True
+    return False
+    
 
 def capture_list_area(roi_x=None, roi_y=None, roi_w=None, roi_h=None):
     print(f"[DEBUG] Capturing list area...")
@@ -241,7 +243,8 @@ def search_result_shown():
     result = cv2.matchTemplate(screenshot_cv, resized_image, cv2.TM_CCOEFF_NORMED)
     _, max_val, _, max_loc = cv2.minMaxLoc(result)
 
-    if max_val >= 0.5:
+    if max_val >= 0.65:
+        time.sleep(0.5)
         return True
     return False
 
