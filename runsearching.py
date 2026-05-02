@@ -33,7 +33,7 @@ def search():
             h, w = resized_image.shape[:2]
 
             for item in ITEMS:
-                
+                click_open_camera()   
                 click(x, y, h, w)
                 time.sleep(0.15)
 
@@ -100,12 +100,13 @@ def clickabove(x, y, h, w):
         offset_x, offset_y = 95,-17
         print("[INFO] Using default offset")
 
-    click_open_camera()
     pyautogui.click(cx + offset_x, cy + offset_y)
-    click_open_camera()
+    time.sleep(0.2)
+    click_open_camera(False)
+    pyautogui.click(cx + offset_x, cy + offset_y)
     return True
 
-def click_open_camera():
+def click_open_camera(initial=True):
     template=os.path.join(TEMPLATES_DIR,"camera_open.png")
     resize=upscale(template)
 
@@ -114,14 +115,22 @@ def click_open_camera():
 
     result = cv2.matchTemplate(screenshot_cv, resize, cv2.TM_CCOEFF_NORMED)
     _, max_val, _, max_loc = cv2.minMaxLoc(result)
-
-    if max_val >= MATCHING_THRESHOLD:
+    if initial==True:
+        if max_val >= 0.5:
+            x, y = max_loc
+            h, w = resize.shape[:2]
+            doubleclick(x-120,y-120,h,w)
+            return True
+    if max_val >=MATCHING_THRESHOLD:
         x, y = max_loc
         h, w = resize.shape[:2]
         doubleclick(x,y,h,w)
-        return True
+        image_saved=check_images_view()
+        if image_saved:
+          return True
     return False
-    
+def check_images_view():
+    pass    
 
 def capture_list_area(roi_x=None, roi_y=None, roi_w=None, roi_h=None):
     print(f"[DEBUG] Capturing list area...")
