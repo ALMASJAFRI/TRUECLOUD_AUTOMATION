@@ -74,17 +74,25 @@ def center_cordinates(x,y,h,w):
     center_y = y + h // 2
     return (center_x, center_y)
 
-def is_logged_in():
-    home=os.path.join(TEMPLATES_DIR,"Home.png")
-    resized_image=upscale(home)
-    screenshot_view = pyautogui.screenshot()
-    screenshot_cv = cv2.cvtColor(np.array(screenshot_view),cv2.COLOR_BGR2GRAY)
 
-    result = cv2.matchTemplate(screenshot_cv, resized_image, cv2.TM_CCOEFF_NORMED)
-    _, max_val, _, max_loc = cv2.minMaxLoc(result)
+def is_logged_in(timeout=25):
+    home = os.path.join(TEMPLATES_DIR, "Home.png")
+    resized_image = upscale(home)
 
-    if max_val >= MATCHING_THRESHOLD:
-        return True
+    start_time = time.time()
+
+    while time.time() - start_time < timeout:
+        screenshot_view = pyautogui.screenshot()
+        screenshot_cv = cv2.cvtColor(np.array(screenshot_view), cv2.COLOR_BGR2GRAY)
+
+        result = cv2.matchTemplate(screenshot_cv, resized_image, cv2.TM_CCOEFF_NORMED)
+        _, max_val, _, _ = cv2.minMaxLoc(result)
+
+        if max_val >= MATCHING_THRESHOLD:
+            return True
+
+        time.sleep(0.2)
+
     return False
 
 def click(x,y,h,w,to=None):
@@ -92,7 +100,6 @@ def click(x,y,h,w,to=None):
     pyautogui.click(center[0], center[1])
     print(f"[CLICKED] Element at {center}")
     if to=="login":
-       time.sleep(25)
        return is_logged_in()
     time.sleep(2)
     print("clicked")
