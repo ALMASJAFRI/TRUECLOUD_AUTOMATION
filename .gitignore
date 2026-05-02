@@ -9,8 +9,7 @@ envt/
 # Notebook files
 *.ipynb
 
-# Template/reference images
-templates/
+
 
 # Python cache and debug artifacts
 __pycache__/
