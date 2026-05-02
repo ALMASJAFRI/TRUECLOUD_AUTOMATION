@@ -10,7 +10,6 @@ envt/
 *.ipynb
 
 
-
 # Python cache and debug artifacts
 __pycache__/
 *.pyc

@@ -9,7 +9,7 @@ import numpy as np
 import pyperclip
 
 from truecloud import start_app_and_login,TEMPLATES_DIR,upscale,MATCHING_THRESHOLD,click,center_cordinates,SCRIPT_DIR
-ITEMS = ["NAIPURA,01-PANWARI","BUDHAURA,01-JAITHPUR", "BANDO,02-PANWARI"]
+ITEMS = ["NAIPURA,01-PANWARI","JYORAIYA,01-KABRAI","BUDHAURA,01-JAITHPUR", "BANDO,02-PANWARI"]
 
 def search():
     try:
@@ -31,17 +31,15 @@ def search():
         if max_val >= MATCHING_THRESHOLD:
             x, y = max_loc
             h, w = resized_image.shape[:2]
+            click_open_camera()   
 
             for item in ITEMS:
-                click_open_camera()   
                 click(x, y, h, w)
                 time.sleep(0.15)
-
                 write_to_search(item, x, y, h, w)
                 clickbelow(x, y, h, w)
                 clickabove(x, y, h, w)
                 time.sleep(1.5)
-
             return True
 
     except Exception:
@@ -50,6 +48,7 @@ def search():
 def clickbelow(x, y, h, w):
     center = center_cordinates(x, y, h, w)
     pyautogui.click(center[0], center[1] + 20) 
+
 
 def clickabove(x, y, h, w):
     time.sleep(0.5)
@@ -93,18 +92,66 @@ def clickabove(x, y, h, w):
     
     print(f"[DEBUG] dx={dx}, dy={dy}")
 
+
     if abs(dx)<= 50:
-        offset_x, offset_y = 64, -2
+        offset_x, offset_y = 80, +8
         print("[INFO] Using alternate offset")
     else:
-        offset_x, offset_y = 95,-17
+        offset_x, offset_y = 95, -17
         print("[INFO] Using default offset")
 
-    pyautogui.click(cx + offset_x, cy + offset_y)
-    time.sleep(0.2)
+    px, py = capture_view_play(cx + offset_x, cy + offset_y)
+
+    if px is None or py is None:
+        print("[WARNING] Play button not found")
+        return False
+
+    pyautogui.click(px, py)
+    time.sleep(1.5)
     click_open_camera(False)
-    pyautogui.click(cx + offset_x, cy + offset_y)
+    time.sleep(0.5)
+    pyautogui.click(px, py)
     return True
+
+
+def capture_view_play(x, y, size=100, threshold=0.7, template_name="play_button.png"):
+    size = int(size)
+    half = size // 2
+    screen_w, screen_h = pyautogui.size()
+    width = size
+    height = int(size * 0.8)
+
+    left = max(0, x - width // 2)
+    top = max(0, y - height // 2 + 30)
+
+    w = min(width, screen_w - left)
+    h = min(height, screen_h - top)
+    if w <= 0 or h <= 0:
+        return None, None
+
+    screenshot = pyautogui.screenshot(region=(left, top, w, h))
+    crop_bgr = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
+    crop_gray = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2GRAY)
+
+    tpl_path = os.path.join(TEMPLATES_DIR, template_name)
+    tpl = upscale(tpl_path)
+    if tpl is None:
+        return None, None
+    tpl_gray = tpl if len(tpl.shape) == 2 else cv2.cvtColor(tpl, cv2.COLOR_BGR2GRAY)
+
+    res = cv2.matchTemplate(crop_gray, tpl_gray, cv2.TM_CCOEFF_NORMED)
+    _, max_val, _, max_loc = cv2.minMaxLoc(res)
+
+    cv2.imwrite(os.path.join(SCRIPT_DIR, "debug_play_crop.png"), crop_bgr)
+
+    if max_val >= threshold:
+        tx, ty = max_loc
+        th, tw = tpl_gray.shape[:2]
+        abs_cx = left + tx + tw // 2
+        abs_cy = top + ty + th // 2
+        return abs_cx, abs_cy
+    
+    return None, None
 
 def click_open_camera(initial=True):
     template=os.path.join(TEMPLATES_DIR,"camera_open.png")
@@ -116,21 +163,39 @@ def click_open_camera(initial=True):
     result = cv2.matchTemplate(screenshot_cv, resize, cv2.TM_CCOEFF_NORMED)
     _, max_val, _, max_loc = cv2.minMaxLoc(result)
     if initial==True:
-        if max_val >= 0.5:
+        if max_val >= 0.15:
             x, y = max_loc
             h, w = resize.shape[:2]
             doubleclick(x-120,y-120,h,w)
             return True
-    if max_val >=MATCHING_THRESHOLD:
+    if max_val >=0.15:
         x, y = max_loc
         h, w = resize.shape[:2]
-        doubleclick(x,y,h,w)
+        doubleclick(x-120,y-120,h,w)
+        time.sleep(4)
         image_saved=check_images_view()
         if image_saved:
           return True
+        
     return False
+
+
 def check_images_view():
-    pass    
+    template=os.path.join(TEMPLATES_DIR,"camera_opened.png")
+    resize=upscale(template)
+
+    while True:
+        screenshot_view = pyautogui.screenshot()
+        screenshot_cv = cv2.cvtColor(np.array(screenshot_view), cv2.COLOR_BGR2GRAY)
+
+        result = cv2.matchTemplate(screenshot_cv, resize, cv2.TM_CCOEFF_NORMED)
+        _, max_val, _, max_loc = cv2.minMaxLoc(result)
+
+        if max_val >=0.15:
+            pyautogui.hotkey("alt", "f4")
+            return True
+        time.sleep(2)
+    
 
 def capture_list_area(roi_x=None, roi_y=None, roi_w=None, roi_h=None):
     print(f"[DEBUG] Capturing list area...")
@@ -184,7 +249,7 @@ def find_blue_highlight(hsv_img, offset=(0, 0)):
         area = cv2.contourArea(c)
         x, y, w, h = cv2.boundingRect(c)
 
-        if area > 400 and w > h:  # horizontal row shape
+        if area > 400 and w > h: 
             if area > best_area:
                 best_area = area
                 best = (x, y, w, h)
