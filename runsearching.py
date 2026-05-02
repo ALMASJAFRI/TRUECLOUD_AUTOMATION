@@ -97,7 +97,7 @@ def clickabove(x, y, h, w):
         offset_x, offset_y = 80, +8
         print("[INFO] Using alternate offset")
     else:
-        offset_x, offset_y = 95, -4
+        offset_x, offset_y = 95, -7
         print("[INFO] Using default offset")
 
     pyautogui.click(cx + offset_x, cy + offset_y)
