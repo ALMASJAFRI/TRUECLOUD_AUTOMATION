@@ -130,7 +130,7 @@ def clickabove(x, y, h, w,first=False):
             time.sleep(1.5)
 
             print("[INFO] Scrolling down 50px")
-            pyautogui.scroll(-20)  
+            pyautogui.scroll(-25)  
             time.sleep(0.5)  
             seen.add((px,py))
         pyautogui.scroll(-10)  
@@ -139,15 +139,19 @@ def clickabove(x, y, h, w,first=False):
         
 
 
-def capture_view_play(x, y, size=100, threshold=0.5, template_name="play_button.png",first=False):
+def capture_view_play(x, y, size=100, threshold=0.6, template_name="play_button.png",first=False):
     
     size = int(size)
-    width = size
-    height = size
     screen_w,screen_h=pyautogui.size()
-    shift = -10  
+    shift = -10
+    top_trim = max(4, size // 12)
+    bottom_trim = max(12, size // 4)
+
     left = max(0, x - size // 2)
-    top = max(0, y - size // 2 + shift)
+    top = max(0, y - size // 2 + shift + top_trim)
+
+    width = size
+    height = max(1, size - top_trim - bottom_trim)
 
     w = min(width, screen_w - left)
     h = min(height, screen_h - top)
@@ -215,7 +219,7 @@ def click_open_camera(initial=True):
 
 
 def check_images_view():
-    template=os.path.join(TEMPLATES_DIR,"camera_opened.png")
+    template=os.path.join(TEMPLATES_DIR,"window_close.png")
     resize=upscale(template)
 
     while True:
@@ -225,11 +229,15 @@ def check_images_view():
         result = cv2.matchTemplate(screenshot_cv, resize, cv2.TM_CCOEFF_NORMED)
         _, max_val, _, max_loc = cv2.minMaxLoc(result)
 
-        if max_val >=0.15:
-            pyautogui.hotkey("alt", "f4")
+        if max_val >=0.50:
+            time.sleep(0.5)
+            x, y = max_loc
+            h, w = resize.shape[:2]
+            center=center_cordinates(x,y,h,w)
+            pyautogui.click(center[0], center[1])    
             return True
         time.sleep(2)
-    
+    return False
 
 def capture_list_area(roi_x=None, roi_y=None, roi_w=None, roi_h=None):
     print(f"[DEBUG] Capturing list area...")
