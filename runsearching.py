@@ -9,7 +9,7 @@ import numpy as np
 import pyperclip
 
 from truecloud import start_app_and_login,TEMPLATES_DIR,upscale,MATCHING_THRESHOLD,click,center_cordinates,SCRIPT_DIR
-ITEMS = ["NAIPURA,01-PANWARI","JYORAIYA,01-KABRAI","BUDHAURA,01-JAITHPUR", "BANDO,02-PANWARI"]
+ITEMS = ["NAIPURA,01-PANWARI","JYORAIYA,01-KABRAI","BUDHAURA,01-JAITHPUR", "BANDO,02-PANWARI","CHHIKAHRA-01 KABRAI","LILWAN,02-PANWARI","LILWAN,01-PANWARI","KABRAI DEHAT,01-KABRAI","MOCHIPURA,02-KABRAI","MOCHIPURA,01-KABRAI","BARAYAN,02-CHARKHARI","BARAYAN,01-CHARKHARI","BUDHAURA,01-JAITPUR",]
 
 def search():
     try:
@@ -38,7 +38,9 @@ def search():
                 time.sleep(0.15)
                 write_to_search(item, x, y, h, w)
                 clickbelow(x, y, h, w)
-                clickabove(x, y, h, w)
+                got_images=clickabove(x, y, h, w)
+                if not got_images:
+                    continue
                 time.sleep(1.5)
             return True
 
