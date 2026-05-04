@@ -101,8 +101,6 @@ def clickabove(x, y, h, w,first=False):
         print("[INFO] Using default offset")
 
     pyautogui.click(cx+80,cy-8)
-    seen=set()
-
     while True:
         px, py = capture_view_play(cx + offset_x, cy + offset_y)
 
@@ -113,27 +111,25 @@ def clickabove(x, y, h, w,first=False):
             time.sleep(0.7)
             continue
         
-        if not (px,py) in seen:
-            play_cx = px
-            play_cy = py 
-            
-            print(f"[INFO] Found play button at ({play_cx}, {play_cy}), clicking...")
-            click_twice(play_cx,play_cy)
-            time.sleep(3)
-            
-            click_open_camera(initial=False)
-            time.sleep(1.5)
-            
-            print(f"[INFO] Re-clicking play button at ({play_cx}, {play_cy})")
+        play_cx = px
+        play_cy = py 
+        
+        print(f"[INFO] Found play button at ({play_cx}, {play_cy}), clicking...")
+        click_twice(play_cx,play_cy)
+        time.sleep(3)
+        
+        click_open_camera(initial=False)
+        time.sleep(1.5)
+        
+        print(f"[INFO] Re-clicking play button at ({play_cx}, {play_cy})")
 
-            click_twice(play_cx,play_cy)
-            
-            time.sleep(1.5)
+        click_twice(play_cx,play_cy)
+        
+        time.sleep(1.5)
 
-            print("[INFO] Scrolling down 50px")
-            pyautogui.scroll(-25)  
-            time.sleep(0.5)  
-            seen.add((px,py))
+        print("[INFO] Scrolling down 50px")
+        pyautogui.scroll(-25)  
+        time.sleep(0.5)  
         pyautogui.scroll(-10)  
         time.sleep(0.6)
 
