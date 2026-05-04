@@ -101,6 +101,7 @@ def clickabove(x, y, h, w,first=False):
         print("[INFO] Using default offset")
 
     pyautogui.click(cx+80,cy-8)
+
     while True:
         px, py = capture_view_play(cx + offset_x, cy + offset_y)
 
@@ -108,7 +109,11 @@ def clickabove(x, y, h, w,first=False):
             print("[INFO] No more play buttons found, exiting loop")
             print("[INFO] Scrolling down 50px")
             pyautogui.scroll(-25)  
-            time.sleep(0.7)
+            time.sleep(0.5)
+            if_end=check_end()
+            if if_end:
+                get_to_final_step(cx,cy,offset_x,offset_y)
+                break
             continue
         
         play_cx = px
@@ -129,19 +134,73 @@ def clickabove(x, y, h, w,first=False):
 
         print("[INFO] Scrolling down 50px")
         pyautogui.scroll(-25)  
-        time.sleep(0.5)  
+        time.sleep(0.3)  
         pyautogui.scroll(-10)  
-        time.sleep(0.6)
-
+        time.sleep(0.4)
     return True
+def check_end():
+    template=os.path.join(TEMPLATES_DIR,"dead_end.png")
+    resize=upscale(template)
+
+    screenshot_view = pyautogui.screenshot()
+    screenshot_cv = cv2.cvtColor(np.array(screenshot_view), cv2.COLOR_BGR2GRAY)
+
+    result = cv2.matchTemplate(screenshot_cv, resize, cv2.TM_CCOEFF_NORMED)
+    _, max_val, _, max_loc = cv2.minMaxLoc(result)
+    if max_val >=0.8:
+        return True
+
+def get_to_final_step(cx, cy, offset_x, offset_y, max_steps=13):
+    pyautogui.scroll(-25)
+    probe_x = cx + offset_x
+    probe_y = cy + offset_y
+
+    pyautogui.moveTo(probe_x, probe_y, duration=0.1)
+    time.sleep(0.2)
+
+    for i in range(max_steps):
         
+        px, py = capture_view_play(probe_x, probe_y)
+
+        if px is None or py is None:
+            print(f"[INFO] step {i+1}: no play at probe ({probe_x},{probe_y}), moving probe down")
+            probe_y += 25
+            pyautogui.moveTo(probe_x, probe_y, duration=0.08)
+            time.sleep(0.25)
+            probe_y += 10
+            pyautogui.moveTo(probe_x, probe_y, duration=0.08)
+            time.sleep(0.35)
+            continue
+
+        play_cx, play_cy = px, py
+
+        print(f"[INFO] step {i+1}: found play at ({play_cx}, {play_cy}), clicking...")
+        click_twice(play_cx, play_cy)
+        time.sleep(3)
+
+        click_open_camera(initial=False)
+        time.sleep(1.5)
+
+        print(f"[INFO] step {i+1}: re-clicking play at ({play_cx}, {play_cy})")
+        click_twice(play_cx, play_cy)
+        time.sleep(1.5)
+
+        probe_y += 25
+        pyautogui.moveTo(probe_x, probe_y, duration=0.08)
+        time.sleep(0.25)
+        probe_y += 8
+        pyautogui.moveTo(probe_x, probe_y, duration=0.08)
+        time.sleep(0.35)
+
+    check_images_view()
+    return True
+
 def click_twice(x,y):
     for i in range(2):
         pyautogui.click(x,y)
         time.sleep(0.2)
 
 def capture_view_play(x, y, size=100, threshold=0.4, template_name="play_button.png",first=False):
-    
     size = int(size)
     screen_w,screen_h=pyautogui.size()
     shift = -10
