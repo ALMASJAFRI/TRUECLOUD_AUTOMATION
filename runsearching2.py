@@ -110,23 +110,24 @@ def clickabove(x, y, h, w,first=False):
             print("[INFO] No more play buttons found, exiting loop")
             print("[INFO] Scrolling down 50px")
             pyautogui.scroll(-25)  
-            time.sleep(0.5)
+            time.sleep(0.7)
             continue
         
         if not (px,py) in seen:
-
             play_cx = px
             play_cy = py 
             
             print(f"[INFO] Found play button at ({play_cx}, {play_cy}), clicking...")
-            pyautogui.click(play_cx, play_cy)
+            click_twice(play_cx,play_cy)
             time.sleep(3)
             
             click_open_camera(initial=False)
             time.sleep(1.5)
             
             print(f"[INFO] Re-clicking play button at ({play_cx}, {play_cy})")
-            pyautogui.click(play_cx, play_cy)
+
+            click_twice(play_cx,play_cy)
+            
             time.sleep(1.5)
 
             print("[INFO] Scrolling down 50px")
@@ -134,12 +135,16 @@ def clickabove(x, y, h, w,first=False):
             time.sleep(0.5)  
             seen.add((px,py))
         pyautogui.scroll(-10)  
-        time.sleep(0.5)  
+        time.sleep(0.6)
+
     return True
         
+def click_twice(x,y):
+    for i in range(2):
+        pyautogui.click(x,y)
+        time.sleep(0.2)
 
-
-def capture_view_play(x, y, size=100, threshold=0.6, template_name="play_button.png",first=False):
+def capture_view_play(x, y, size=100, threshold=0.4, template_name="play_button.png",first=False):
     
     size = int(size)
     screen_w,screen_h=pyautogui.size()
@@ -183,6 +188,7 @@ def capture_view_play(x, y, size=100, threshold=0.6, template_name="play_button.
 
 
     if max_val >= threshold:
+        time.sleep(0.5)
         tx, ty = max_loc
         th, tw = tpl_gray.shape[:2]
         abs_cx = left + tx + tw // 2
