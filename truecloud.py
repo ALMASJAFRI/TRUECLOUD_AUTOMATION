@@ -6,8 +6,12 @@ import time
 import cv2
 import pyautogui
 import numpy as np
+import pygetwindow as gw
+from logger_setup import get_logger
 
-REFRENCE_RESOLUTION=(1920,1080)
+logger = get_logger(__name__)
+
+REFRENCE_RESOLUTION=(1366,768)
 MATCHING_THRESHOLD=0.8
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -22,12 +26,12 @@ def get_exe_path():
                 path_loaded = path_dict.get("path_exe", "")
 
                 if os.path.exists(path_loaded):
-                    print(f"using saved path: {path_loaded}")
+                    logger.info(f"using saved path: {path_loaded}")
                     return path_loaded
             except Exception as e:
                 pass
     
-    print("path not found please provide path to truecloud")
+    logger.info("path not found please provide path to truecloud")
     path = filedialog.askopenfilename(
         title="SELECT TRUECLOUD",
         filetypes=[("EXE files", "*.exe"), ("ALL files", "*.*")]
@@ -36,22 +40,31 @@ def get_exe_path():
         raise FileNotFoundError("no valid EXE selected")
     with open(TRUECLOUD_NAME, "w") as f:
         json.dump({"path_exe": path}, f, indent=2)
-    print(f"file path configured")
+    logger.info("file path configured")
     return path
 
 
 def start_app_and_login():
-    path_to_cloud=get_exe_path()
+    path_to_cloud = get_exe_path()
     if not path_to_cloud:
-        print("error no path found")
-    open=subprocess.Popen(path_to_cloud)
-    print("✓ Application launched successfully")
-    time.sleep(4)  
-    login=login_click()
-    if login:
-       return True
-    else:
-        return False
+        logger.error("error no path found")
+
+    app_process = subprocess.Popen(path_to_cloud)
+    logger.info("✓ Application launched successfully")
+
+    time.sleep(5)  # wait for window to appear
+
+    # Bring window to front
+    windows = gw.getAllTitles()
+    for title in windows:
+        if "TRUECLOUD" in title:   # change this to your actual app window title
+            win = gw.getWindowsWithTitle(title)[0]
+            win.activate()
+            logger.info(f"✓ Brought '{title}' to front")
+            break
+
+    login = login_click()
+    return login
 
     
 def get_scale():
@@ -89,6 +102,7 @@ def is_logged_in(timeout=60):
         _, max_val, _, _ = cv2.minMaxLoc(result)
 
         if max_val >= MATCHING_THRESHOLD:
+            time.sleep(3)
             return True
 
         time.sleep(0.2)
@@ -98,11 +112,11 @@ def is_logged_in(timeout=60):
 def click(x,y,h,w,to=None):
     center=center_cordinates(x,y,h,w)
     pyautogui.click(center[0], center[1])
-    print(f"[CLICKED] Element at {center}")
+    logger.info(f"[CLICKED] Element at {center}")
     if to=="login":
        return is_logged_in()
     time.sleep(2)
-    print("clicked")
+    logger.debug("clicked")
     return True
 
 
@@ -121,7 +135,7 @@ def login_click():
     
         clicked=click(x,y,h,w,to="login")
         if clicked:
-            print("logging success full!")
+            logger.info("logging success full!")
             return True
     return False
 

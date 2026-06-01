@@ -9,6 +9,10 @@ import numpy as np
 import pyperclip
 
 from truecloud import start_app_and_login,TEMPLATES_DIR,upscale,MATCHING_THRESHOLD,click,center_cordinates,SCRIPT_DIR
+from logger_setup import get_logger, get_screenshot_path
+
+logger = get_logger(__name__)
+
 ITEMS = ["NAIPURA,01-PANWARI","JYORAIYA,01-KABRAI","BUDHAURA,01-JAITHPUR", "BANDO,02-PANWARI","CHHIKAHRA-01 KABRAI","LILWAN,02-PANWARI","LILWAN,01-PANWARI","KABRAI DEHAT,01-KABRAI","MOCHIPURA,02-KABRAI","MOCHIPURA,01-KABRAI","BARAYAN,02-CHARKHARI","BARAYAN,01-CHARKHARI","BUDHAURA,01-JAITPUR",]
 
 def search():
@@ -16,7 +20,7 @@ def search():
         for trying in range(1, 4):
             started = start_app_and_login()
             if started:
-                print("app started")
+                logger.info("app started")
                 break
             raise FileExistsError("Failed to start app retrying..")
 
@@ -44,8 +48,8 @@ def search():
                 time.sleep(1.5)
             return True
 
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.exception(f"search failed: {exc}")
 
 def clickbelow(x, y, h, w):
     center = center_cordinates(x, y, h, w)
@@ -63,7 +67,7 @@ def clickabove(x, y, h, w):
     roi_y = max(0, y - 450)
     roi_h = 450
 
-    print(f"[DEBUG] ROI: x={roi_x}, y={roi_y}, w={roi_w}, h={roi_h}")
+    logger.debug(f"[DEBUG] ROI: x={roi_x}, y={roi_y}, w={roi_w}, h={roi_h}")
 
     hsv_img, offset = capture_list_area(
         roi_x=roi_x,
@@ -73,13 +77,13 @@ def clickabove(x, y, h, w):
     )
 
     if hsv_img is None:
-        print("[WARNING] Failed to capture list area")
+        logger.warning("[WARNING] Failed to capture list area")
         return False
 
     highlight = find_blue_highlight(hsv_img, offset=offset)
 
     if highlight is None:
-        print("[WARNING] No blue highlight found")
+        logger.warning("[WARNING] No blue highlight found")
         return False
 
     abs_x, abs_y, card_w, card_h = highlight
@@ -88,24 +92,24 @@ def clickabove(x, y, h, w):
 
     time.sleep(1)
 
-    print(f"[INFO] Clicking highlight at ({cx}, {cy})")
+    logger.info(f"[INFO] Clicking highlight at ({cx}, {cy})")
     dx =abs(cx - x)
     dy = abs(cy - y)
     
-    print(f"[DEBUG] dx={dx}, dy={dy}")
+    logger.debug(f"[DEBUG] dx={dx}, dy={dy}")
 
 
     if abs(dx)<= 50:
         offset_x, offset_y = 80, +8
-        print("[INFO] Using alternate offset")
+        logger.info("[INFO] Using alternate offset")
     else:
         offset_x, offset_y = 95, -17
-        print("[INFO] Using default offset")
+        logger.info("[INFO] Using default offset")
 
     px, py = capture_view_play(cx + offset_x, cy + offset_y)
 
     if px is None or py is None:
-        print("[WARNING] Play button not found")
+        logger.warning("[WARNING] Play button not found")
         return False
 
     pyautogui.click(px, py)
@@ -144,7 +148,7 @@ def capture_view_play(x, y, size=100, threshold=0.7, template_name="play_button.
     res = cv2.matchTemplate(crop_gray, tpl_gray, cv2.TM_CCOEFF_NORMED)
     _, max_val, _, max_loc = cv2.minMaxLoc(res)
 
-    cv2.imwrite(os.path.join(SCRIPT_DIR, "debug_play_crop.png"), crop_bgr)
+    cv2.imwrite(get_screenshot_path("debug_play_crop"), crop_bgr)
 
     if max_val >= threshold:
         tx, ty = max_loc
@@ -200,22 +204,22 @@ def check_images_view():
     
 
 def capture_list_area(roi_x=None, roi_y=None, roi_w=None, roi_h=None):
-    print(f"[DEBUG] Capturing list area...")
+    logger.debug("[DEBUG] Capturing list area...")
 
     try:
         screenshot = pyautogui.screenshot(region=(roi_x, roi_y, roi_w, roi_h))
         bgr = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
         hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
 
-        print(f"[DEBUG] Captured shape: {hsv.shape}")
+        logger.debug(f"[DEBUG] Captured shape: {hsv.shape}")
 
         # Debug save
-        cv2.imwrite(os.path.join(SCRIPT_DIR, "debug_list_capture.png"), bgr)
+        cv2.imwrite(get_screenshot_path("debug_list_capture"), bgr)
 
         return hsv, (roi_x, roi_y)
 
     except Exception as e:
-        print(f"[ERROR] Capture failed: {e}")
+        logger.error(f"[ERROR] Capture failed: {e}")
         return None, None
     
 
@@ -223,14 +227,14 @@ def find_blue_highlight(hsv_img, offset=(0, 0)):
     if hsv_img is None:
         return None
 
-    print("[DEBUG] Searching for blue highlight...")
+    logger.debug("[DEBUG] Searching for blue highlight...")
 
     lower_blue = np.array([85, 80, 120], dtype=np.uint8)
     upper_blue = np.array([115, 255, 255], dtype=np.uint8)
 
     mask = cv2.inRange(hsv_img, lower_blue, upper_blue)
 
-    print(f"[DEBUG] Mask pixels: {np.count_nonzero(mask)}")
+    logger.debug(f"[DEBUG] Mask pixels: {np.count_nonzero(mask)}")
 
     # Clean noise
     kernel = np.ones((5, 5), np.uint8)
@@ -238,11 +242,11 @@ def find_blue_highlight(hsv_img, offset=(0, 0)):
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 
     # Save mask for debug
-    cv2.imwrite(os.path.join(SCRIPT_DIR, "debug_blue_mask.png"), mask)
+    cv2.imwrite(get_screenshot_path("debug_blue_mask"), mask)
 
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    print(f"[DEBUG] Contours found: {len(contours)}")
+    logger.debug(f"[DEBUG] Contours found: {len(contours)}")
 
     best = None
     best_area = 0
@@ -257,14 +261,14 @@ def find_blue_highlight(hsv_img, offset=(0, 0)):
                 best = (x, y, w, h)
 
     if best is None:
-        print("[DEBUG] No valid highlight found")
+        logger.debug("[DEBUG] No valid highlight found")
         return None
 
     x, y, w, h = best
     abs_x = x + offset[0]
     abs_y = y + offset[1]
 
-    print(f"[DEBUG] Highlight at ({abs_x}, {abs_y}), size=({w},{h})")
+    logger.debug(f"[DEBUG] Highlight at ({abs_x}, {abs_y}), size=({w},{h})")
 
     return (abs_x, abs_y, w, h)
 
@@ -274,13 +278,13 @@ def doubleclick(x,y,h,w):
     for clic in range(3):
         pyautogui.click(center[0], center[1])
         time.sleep(0.2)
-    print(f"[CLICKED] Element at {center}")
-    print("clicked")
+    logger.info(f"[CLICKED] Element at {center}")
+    logger.debug("clicked")
     return True
 
 
 def write_to_search(text,x,y,h,w):
-    print(f"[TYPING] Writing: {text}")
+    logger.info(f"[TYPING] Writing: {text}")
 
     text = str(text)
     time.sleep(0.1)
@@ -297,7 +301,7 @@ def write_to_search(text,x,y,h,w):
     text=splited[0] +"-" + splited[1][0:3]
     helper_char=splited[1][2:3]
 
-    print(splited)
+    logger.debug(splited)
     pyperclip.copy(text)
     time.sleep(0.2)
     pyautogui.hotkey("ctrl","v")
@@ -308,7 +312,7 @@ def write_to_search(text,x,y,h,w):
     return True
 
 def search_result_shown():
-    print("got to see result in search_result_shown")
+    logger.debug("got to see result in search_result_shown")
     search_result=os.path.join(TEMPLATES_DIR,"search_result.png")
     resized_image=upscale(search_result)
 
@@ -327,21 +331,21 @@ def search_result_shown():
 def nudge_search_until_result(x, y, h, w, helper_char):
     while True:
         if search_result_shown():
-            print("true")
+            logger.debug("true")
             return True
 
         doubleclick(x, y, h, w)
         pyautogui.press("backspace")
 
         if search_result_shown():
-            print("true")
+            logger.debug("true")
             return True
 
         pyautogui.press("end")
         time.sleep(0.08)
 
         if search_result_shown():
-            print("true")
+            logger.debug("true")
             return True
         
         pyautogui.typewrite(helper_char)
@@ -351,8 +355,8 @@ def nudge_search_until_result(x, y, h, w, helper_char):
 if __name__ == "__main__":
     try:
         search()
-        print(f"✓ Success")
+        logger.info("✓ Success")
     except Exception as e:
-        print(f"✗ Error: {e}")
+        logger.error(f"✗ Error: {e}")
     finally:
-        print("press enter to exit")
+        logger.info("press enter to exit")
