@@ -1,4 +1,3 @@
-
 import os
 import json
 from tkinter import filedialog
@@ -74,6 +73,7 @@ def error_occured():
             x=tx + tw // 2
             y=ty + th // 2
             pyautogui.click(x,y)
+            return True
 
         
     
@@ -128,6 +128,8 @@ def clickabove(x, y, h, w, first=False):
     while True:
         step += 1
         logger.info(f"----- LOOP STEP {step} -----")
+        if error_occured():
+            pyautogui.moveTo(204,131)
 
         px, py = capture_view_play(204,122)
 
@@ -185,6 +187,9 @@ def get_to_final_step(cx, cy, max_steps=15):
     probe_x=cx
     probe_y=cy
 
+    if error_occured():
+        pyautogui.moveTo(probe_x,probe_y)
+
     px, py = capture_view_play(probe_x, probe_y)
     logger.debug(f"[DEBUG] capture_view_play -> px:{px}, py:{py}")
 
@@ -214,6 +219,8 @@ def get_to_final_step(cx, cy, max_steps=15):
         time.sleep(0.2)
     pyautogui.scroll(-15)
     for i in range(max_steps):
+        if error_occured():
+            pyautogui.moveTo(probe_x,probe_y)
         px, py = capture_view_play(probe_x, probe_y)
 
         if px is None or py is None:
