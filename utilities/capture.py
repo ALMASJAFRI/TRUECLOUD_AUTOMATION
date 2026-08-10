@@ -8,7 +8,16 @@ from truecloud import TEMPLATES_DIR, upscale
 import utilities.report_manager as report_manager
 
 CARD_HEIGHT = 52
+REPORT_GENERATION=True
 
+def _Set_Report_Generation(status):
+    global REPORT_GENERATION
+    try:
+        REPORT_GENERATION=status
+    except (TypeError, ValueError):
+        REPORT_GENERATION=False
+    
+    
 
 def capture_list_area(roi_x=None, roi_y=None, roi_w=None, roi_h=None):
     print(f"[DEBUG] Capturing list area...")
@@ -56,7 +65,8 @@ def capture_view_play(x, y, size=100, threshold=0.6, template_name="click_play.p
     res = cv2.matchTemplate(crop_gray, tpl_gray, cv2.TM_CCOEFF_NORMED)
     _, max_val, _, max_loc = cv2.minMaxLoc(res)
 
-    #report_manager.save_card_screenshot(crop_bgr)
+    if REPORT_GENERATION:
+        report_manager.save_card_screenshot(crop_bgr)
 
     if first:
         tx, ty = max_loc

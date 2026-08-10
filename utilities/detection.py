@@ -6,6 +6,17 @@ import pyautogui
 
 from truecloud import TEMPLATES_DIR, upscale, center_cordinates
 
+CHECK_IMAGES_VIEW_DELAY = 0.5
+
+
+def set_check_images_view_delay(delay):
+    global CHECK_IMAGES_VIEW_DELAY
+
+    try:
+        CHECK_IMAGES_VIEW_DELAY = max(0.0, float(delay))
+    except (TypeError, ValueError):
+        CHECK_IMAGES_VIEW_DELAY = 0.5
+
 
 def find_blue_highlight(hsv_img, offset=(0, 0)):
     if hsv_img is None:
@@ -96,7 +107,7 @@ def check_images_view():
         _, max_val, _, max_loc = cv2.minMaxLoc(result)
 
         if max_val >= 0.50:
-            time.sleep(0.5)
+            time.sleep(CHECK_IMAGES_VIEW_DELAY)
             x, y = max_loc
             h, w = resize.shape[:2]
             center = center_cordinates(x, y, h, w)

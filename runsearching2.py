@@ -7,13 +7,12 @@ import cv2
 import pyautogui
 import numpy as np
 import pyperclip
+from utilities.report_manager import *
 from utilities.actions import *
 from utilities.capture import * 
 from utilities.detection import *
 from truecloud import start_app_and_login,TEMPLATES_DIR,upscale,MATCHING_THRESHOLD,click,center_cordinates,SCRIPT_DIR
 ITEMS = ["NAIPURA,01-PANWARI"]
-
-# Runtime-tunable values controlled by settings in __main__.
 PLAY_BUTTON_THRESHOLD = 0.6
 PIXEL_MOVEMENT = 25
 
@@ -118,6 +117,9 @@ def clickabove(x, y, h, w,first=False):
         if px is None or py is None:
             print("[INFO] No more play buttons found, exiting loop")
             print("[INFO] Scrolling down 50px")
+            if settings["generate_report"]:
+                end_cycle(False,False)
+
             pyautogui.scroll(-major_step)
             time.sleep(0.7)
             if_end=check_end()
@@ -145,6 +147,8 @@ def clickabove(x, y, h, w,first=False):
         print("[INFO] Scrolling down 50px")
         pyautogui.scroll(-major_step)
         time.sleep(0.6)  
+        if settings["generate_report"]:
+            end_cycle(True,True)
         pyautogui.scroll(-minor_step)
         time.sleep(0.4)
     return True
@@ -168,6 +172,8 @@ def get_to_final_step(cx, cy, offset_x, offset_y, max_steps=13):
 
         if px is None or py is None:
             print(f"[INFO] step {i+1}: no play at probe ({probe_x},{probe_y}), moving probe down")
+            if settings["generate_report"]:
+                end_cycle(False,False)
             probe_y += major_step
             pyautogui.moveTo(probe_x, probe_y, duration=0.08)
             time.sleep(0.25)
@@ -192,6 +198,8 @@ def get_to_final_step(cx, cy, offset_x, offset_y, max_steps=13):
         probe_y += major_step
         pyautogui.moveTo(probe_x, probe_y, duration=0.08)
         time.sleep(0.25)
+        if settings["generate_report"]:
+            end_cycle(True,True)
         probe_y += minor_step
         pyautogui.moveTo(probe_x, probe_y, duration=0.08)
         time.sleep(0.35)
@@ -216,6 +224,7 @@ if __name__ == "__main__":
     DEFAULT_SETTINGS = {
         "threshold": PLAY_BUTTON_THRESHOLD,
         "pixel_movement": PIXEL_MOVEMENT,
+        "close_view_delay": 0.5,
         "generate_report": True,
     }
 
@@ -243,7 +252,8 @@ if __name__ == "__main__":
     # Apply settings to the runtime values used by play detection/movement only.
     PLAY_BUTTON_THRESHOLD = float(settings["threshold"])
     PIXEL_MOVEMENT = int(settings["pixel_movement"])
-
+    set_check_images_view_delay(settings.get("close_view_delay", 0.5))
+    
     def show_header():
         console.clear()
         logo = Text(
@@ -265,7 +275,7 @@ if __name__ == "__main__":
         console.print(
             Panel(
                 Group(logo, divider, subtitle),
-                subtitle="OpenCode-style Runner",
+                subtitle="BrainPan Innovations",
                 border_style="#4aa8d8",
                 box=box.HEAVY,
                 padding=(1, 2),
@@ -284,6 +294,7 @@ if __name__ == "__main__":
 
             table.add_row("Play Detection Threshold", str(settings["threshold"]))
             table.add_row("Pixel Movement", f"{settings['pixel_movement']} px")
+            table.add_row("Close View Delay", f"{settings['close_view_delay']} s")
             table.add_row(
                 "Generate Report",
                 "TRUE" if settings["generate_report"] else "FALSE",
@@ -294,10 +305,11 @@ if __name__ == "__main__":
 
             console.print("[1] Change play detection threshold")
             console.print("[2] Change pixel movement")
-            console.print("[3] Toggle report generation")
-            console.print("[4] Back")
+            console.print("[3] Change close view delay")
+            console.print("[4] Toggle report generation")
+            console.print("[5] Back")
 
-            choice = Prompt.ask("\nSelect option", choices=["1", "2", "3", "4"])
+            choice = Prompt.ask("\nSelect option", choices=["1", "2", "3", "4", "5"])
 
             if choice == "1":
                 value = Prompt.ask(
@@ -344,14 +356,37 @@ if __name__ == "__main__":
                     time.sleep(1)
 
             elif choice == "3":
+                value = Prompt.ask(
+                    "Enter close view delay (seconds)",
+                    default=str(settings["close_view_delay"]),
+                )
+
+                try:
+                    value = float(value)
+                    if value < 0:
+                        console.print("[red]Delay cannot be negative[/red]")
+                        time.sleep(1)
+                        continue
+
+                    settings["close_view_delay"] = value
+                    set_check_images_view_delay(value)
+                    save_settings(settings)
+
+                    console.print(f"\n[green]Close view delay updated to {value}s[/green]")
+                    time.sleep(1)
+                except ValueError:
+                    console.print("[red]Invalid number[/red]")
+                    time.sleep(1)
+
+            elif choice == "4":
                 settings["generate_report"] = not settings["generate_report"]
                 save_settings(settings)
-
+                Set_Report_Generation(settings["generate_report"])
                 state = "enabled" if settings["generate_report"] else "disabled"
                 console.print(f"\n[green]Report generation {state}[/green]")
                 time.sleep(1)
 
-            elif choice == "4":
+            elif choice == "5":
                 break
 
     def run_automation():
@@ -362,6 +397,7 @@ if __name__ == "__main__":
                 (
                     f"\n[cyan]Play Threshold:[/cyan] {settings['threshold']}"
                     f"\n[cyan]Pixel Movement:[/cyan] {settings['pixel_movement']} px"
+                    f"\n[cyan]Close View Delay:[/cyan] {settings['close_view_delay']} s"
                     f"\n[cyan]Generate Report:[/cyan] "
                     f"{'TRUE' if settings['generate_report'] else 'FALSE'}\n"
                 ),
