@@ -4,11 +4,13 @@ log.txt
 logs/
 
 # Virtual environment
-env/
 dist/
-logs/
-reports/
 build/
+*.exe
+__pycache__/
+*.pyc
+env/
+.venv/
 
 # Notebook files
 *.ipynb
