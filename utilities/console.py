@@ -256,14 +256,18 @@ def run_automation():
             while thread.is_alive():
                 time.sleep(0.1)
     except KeyboardInterrupt:
-        stop_event.set()
-        thread.join(timeout=10)
-        if settings["generate_report"]:
-            console.print("\n[yellow]Saving partial report...[/yellow]")
-            save_report(timeout=10)
-        console.print("[yellow]Automation stopped. Partial report saved.[/yellow]")
-        return
-
+         with Live(
+                    Spinner("dots", text=Text("Generating Report ..", style="cyan")),
+                    console=console,
+                    refresh_per_second=10,
+                ):
+                    stop_event.set()
+                    thread.join(timeout=10)
+                    if settings["generate_report"]:
+                        console.print("\n[yellow]Saving partial report...[/yellow]")
+                        save_report(timeout=10)
+                    console.print("[yellow]Automation stopped. Partial report saved.[/yellow]")
+                    return
     if result["error"]:
         console.print()
         console.print(
