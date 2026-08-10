@@ -7,9 +7,21 @@ import cv2
 import pyautogui
 import numpy as np
 import pyperclip
-
+from utilities.actions import *
+from utilities.capture import * 
+from utilities.detection import *
 from truecloud import start_app_and_login,TEMPLATES_DIR,upscale,MATCHING_THRESHOLD,click,center_cordinates,SCRIPT_DIR
 ITEMS = ["NAIPURA,01-PANWARI"]
+
+# Runtime-tunable values controlled by settings in __main__.
+PLAY_BUTTON_THRESHOLD = 0.6
+PIXEL_MOVEMENT = 25
+
+
+def _movement_steps():
+    major = max(1, int(PIXEL_MOVEMENT))
+    minor = max(1, major // 3)
+    return major, minor
 
 def search():
     try:
@@ -39,15 +51,8 @@ def search():
             clickbelow(x, y, h, w)
             got_images=clickabove(x, y, h, w,first=True)
             time.sleep(1.5)
-
-
     except Exception:
         pass
-
-def clickbelow(x, y, h, w):
-    center = center_cordinates(x, y, h, w)
-    pyautogui.click(center[0], center[1] + 20) 
-
 
 def clickabove(x, y, h, w,first=False):
 
@@ -103,16 +108,21 @@ def clickabove(x, y, h, w,first=False):
     pyautogui.click(cx+80,cy-8)
 
     while True:
-        px, py = capture_view_play(cx + offset_x, cy + offset_y)
+        major_step, minor_step = _movement_steps()
+        px, py = capture_view_play(
+            cx + offset_x,
+            cy + offset_y,
+            threshold=PLAY_BUTTON_THRESHOLD
+        )
 
         if px is None or py is None:
             print("[INFO] No more play buttons found, exiting loop")
             print("[INFO] Scrolling down 50px")
-            pyautogui.scroll(-25)  
-            time.sleep(0.5)
+            pyautogui.scroll(-major_step)
+            time.sleep(0.7)
             if_end=check_end()
             if if_end:
-                get_to_final_step(cx,cy,offset_x,offset_y)
+                get_to_final_step(cx, cy, offset_x, offset_y)
                 break
             continue
         
@@ -133,25 +143,15 @@ def clickabove(x, y, h, w,first=False):
         time.sleep(1.5)
 
         print("[INFO] Scrolling down 50px")
-        pyautogui.scroll(-25)  
-        time.sleep(0.3)  
-        pyautogui.scroll(-10)  
+        pyautogui.scroll(-major_step)
+        time.sleep(0.6)  
+        pyautogui.scroll(-minor_step)
         time.sleep(0.4)
     return True
-def check_end():
-    template=os.path.join(TEMPLATES_DIR,"dead_end.png")
-    resize=upscale(template)
-
-    screenshot_view = pyautogui.screenshot()
-    screenshot_cv = cv2.cvtColor(np.array(screenshot_view), cv2.COLOR_BGR2GRAY)
-
-    result = cv2.matchTemplate(screenshot_cv, resize, cv2.TM_CCOEFF_NORMED)
-    _, max_val, _, max_loc = cv2.minMaxLoc(result)
-    if max_val >=0.8:
-        return True
 
 def get_to_final_step(cx, cy, offset_x, offset_y, max_steps=13):
-    pyautogui.scroll(-25)
+    major_step, minor_step = _movement_steps()
+    pyautogui.scroll(-major_step)
     probe_x = cx + offset_x
     probe_y = cy + offset_y
 
@@ -160,14 +160,18 @@ def get_to_final_step(cx, cy, offset_x, offset_y, max_steps=13):
 
     for i in range(max_steps):
         
-        px, py = capture_view_play(probe_x, probe_y)
+        px, py = capture_view_play(
+            probe_x,
+            probe_y,
+            threshold=PLAY_BUTTON_THRESHOLD
+        )
 
         if px is None or py is None:
             print(f"[INFO] step {i+1}: no play at probe ({probe_x},{probe_y}), moving probe down")
-            probe_y += 25
+            probe_y += major_step
             pyautogui.moveTo(probe_x, probe_y, duration=0.08)
             time.sleep(0.25)
-            probe_y += 10
+            probe_y += minor_step
             pyautogui.moveTo(probe_x, probe_y, duration=0.08)
             time.sleep(0.35)
             continue
@@ -185,274 +189,274 @@ def get_to_final_step(cx, cy, offset_x, offset_y, max_steps=13):
         click_twice(play_cx, play_cy)
         time.sleep(1.5)
 
-        probe_y += 25
+        probe_y += major_step
         pyautogui.moveTo(probe_x, probe_y, duration=0.08)
         time.sleep(0.25)
-        probe_y += 8
+        probe_y += minor_step
         pyautogui.moveTo(probe_x, probe_y, duration=0.08)
         time.sleep(0.35)
 
     check_images_view()
     return True
 
-def click_twice(x,y):
-    for i in range(2):
-        pyautogui.click(x,y)
-        time.sleep(0.2)
-
-def capture_view_play(x, y, size=100, threshold=0.4, template_name="play_button.png",first=False):
-    size = int(size)
-    screen_w,screen_h=pyautogui.size()
-    shift = -10
-    top_trim = max(4, size // 12)
-    bottom_trim = max(12, size // 4)
-
-    left = max(0, x - size // 2)
-    top = max(0, y - size // 2 + shift + top_trim)
-
-    width = size
-    height = max(1, size - top_trim - bottom_trim)
-
-    w = min(width, screen_w - left)
-    h = min(height, screen_h - top)
-    
-    if w <= 0 or h <= 0:
-        return None, None
-
-    screenshot = pyautogui.screenshot(region=(left, top, w, h))
-    crop_bgr = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
-    crop_gray = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2GRAY)
-
-    tpl_path = os.path.join(TEMPLATES_DIR, template_name)
-    tpl = upscale(tpl_path)
-    if tpl is None:
-        return None, None
-    tpl_gray = tpl if len(tpl.shape) == 2 else cv2.cvtColor(tpl, cv2.COLOR_BGR2GRAY)
-
-    res = cv2.matchTemplate(crop_gray, tpl_gray, cv2.TM_CCOEFF_NORMED)
-    _, max_val, _, max_loc = cv2.minMaxLoc(res)
-
-    cv2.imwrite(os.path.join(SCRIPT_DIR, "debug_play_crop.png"), crop_bgr)
-
-    if first:
-        tx, ty = max_loc
-        th, tw = tpl_gray.shape[:2]
-        abs_cx = left + tx + tw // 2
-        abs_cy = top + ty + th // 2
-        return abs_cx, abs_cy
-
-
-    if max_val >= threshold:
-        time.sleep(0.5)
-        tx, ty = max_loc
-        th, tw = tpl_gray.shape[:2]
-        abs_cx = left + tx + tw // 2
-        abs_cy = top + ty + th // 2
-        return abs_cx, abs_cy
-    
-    return None, None
-
-def click_open_camera(initial=True):
-    template=os.path.join(TEMPLATES_DIR,"camera_open.png")
-    resize=upscale(template)
-
-    screenshot_view = pyautogui.screenshot()
-    screenshot_cv = cv2.cvtColor(np.array(screenshot_view), cv2.COLOR_BGR2GRAY)
-
-    result = cv2.matchTemplate(screenshot_cv, resize, cv2.TM_CCOEFF_NORMED)
-    _, max_val, _, max_loc = cv2.minMaxLoc(result)
-    if initial==True:
-        if max_val >= 0.15:
-            x, y = max_loc
-            h, w = resize.shape[:2]
-            doubleclick(x-120,y-120,h,w)
-            return True
-    if max_val >=0.15:
-        x, y = max_loc
-        h, w = resize.shape[:2]
-        doubleclick(x-120,y-120,h,w)
-        time.sleep(4)
-        image_saved=check_images_view()
-        if image_saved:
-          return True
-        
-    return False
-
-
-def check_images_view():
-    template=os.path.join(TEMPLATES_DIR,"window_close.png")
-    resize=upscale(template)
-
-    while True:
-        screenshot_view = pyautogui.screenshot()
-        screenshot_cv = cv2.cvtColor(np.array(screenshot_view), cv2.COLOR_BGR2GRAY)
-
-        result = cv2.matchTemplate(screenshot_cv, resize, cv2.TM_CCOEFF_NORMED)
-        _, max_val, _, max_loc = cv2.minMaxLoc(result)
-
-        if max_val >=0.50:
-            time.sleep(0.5)
-            x, y = max_loc
-            h, w = resize.shape[:2]
-            center=center_cordinates(x,y,h,w)
-            pyautogui.click(center[0], center[1])    
-            return True
-        time.sleep(2)
-    return False
-
-def capture_list_area(roi_x=None, roi_y=None, roi_w=None, roi_h=None):
-    print(f"[DEBUG] Capturing list area...")
-
-    try:
-        screenshot = pyautogui.screenshot(region=(roi_x, roi_y, roi_w, roi_h))
-        bgr = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
-        hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
-
-        print(f"[DEBUG] Captured shape: {hsv.shape}")
-
-        # Debug save
-        cv2.imwrite(os.path.join(SCRIPT_DIR, "debug_list_capture.png"), bgr)
-
-        return hsv, (roi_x, roi_y)
-
-    except Exception as e:
-        print(f"[ERROR] Capture failed: {e}")
-        return None, None
-    
-
-def find_blue_highlight(hsv_img, offset=(0, 0)):
-    if hsv_img is None:
-        return None
-
-    print("[DEBUG] Searching for blue highlight...")
-
-    lower_blue = np.array([85, 80, 120], dtype=np.uint8)
-    upper_blue = np.array([115, 255, 255], dtype=np.uint8)
-
-    mask = cv2.inRange(hsv_img, lower_blue, upper_blue)
-
-    print(f"[DEBUG] Mask pixels: {np.count_nonzero(mask)}")
-
-    
-    kernel = np.ones((5, 5), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-
-    cv2.imwrite(os.path.join(SCRIPT_DIR, "debug_blue_mask.png"), mask)
-
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    print(f"[DEBUG] Contours found: {len(contours)}")
-
-    best = None
-    best_area = 0
-
-    for c in contours:
-        area = cv2.contourArea(c)
-        x, y, w, h = cv2.boundingRect(c)
-
-        if area > 400 and w > h: 
-            if area > best_area:
-                best_area = area
-                best = (x, y, w, h)
-
-    if best is None:
-        print("[DEBUG] No valid highlight found")
-        return None
-
-    x, y, w, h = best
-    abs_x = x + offset[0]
-    abs_y = y + offset[1]
-
-    print(f"[DEBUG] Highlight at ({abs_x}, {abs_y}), size=({w},{h})")
-
-    return (abs_x, abs_y, w, h)
-
-
-def doubleclick(x,y,h,w):
-    center=center_cordinates(x,y,h,w)
-    for clic in range(3):
-        pyautogui.click(center[0], center[1])
-        time.sleep(0.2)
-    print(f"[CLICKED] Element at {center}")
-    print("clicked")
-    return True
-
-
-def write_to_search(text,x,y,h,w):
-    print(f"[TYPING] Writing: {text}")
-
-    text = str(text)
-    time.sleep(0.1)
-
-    click(x, y, h, w)
-    time.sleep(0.12)
-
-    pyautogui.hotkey("ctrl", "a") 
-    time.sleep(0.08)
-    pyautogui.press("delete")
-    time.sleep(0.08)
-
-    splited=text.split("-")
-    text=splited[0] +"-" + splited[1][0:3]
-    helper_char=splited[1][2:3]
-
-    print(splited)
-    pyperclip.copy(text)
-    time.sleep(0.2)
-    pyautogui.hotkey("ctrl","v")
-    time.sleep(0.2)
-
-    nudge_search_until_result(x,y,h,w,helper_char)
-    
-    return True
-
-def search_result_shown():
-    print("got to see result in search_result_shown")
-    search_result=os.path.join(TEMPLATES_DIR,"search_result.png")
-    resized_image=upscale(search_result)
-
-    screenshot_view = pyautogui.screenshot()
-
-    screenshot_cv = cv2.cvtColor(np.array(screenshot_view),cv2.COLOR_BGR2GRAY)
-
-    result = cv2.matchTemplate(screenshot_cv, resized_image, cv2.TM_CCOEFF_NORMED)
-    _, max_val, _, max_loc = cv2.minMaxLoc(result)
-
-    if max_val >= 0.65:
-        time.sleep(0.5)
-        return True
-    return False
-
-def nudge_search_until_result(x, y, h, w, helper_char):
-    while True:
-        if search_result_shown():
-            print("true")
-            return True
-
-        doubleclick(x, y, h, w)
-        pyautogui.press("backspace")
-
-        if search_result_shown():
-            print("true")
-            return True
-
-        pyautogui.press("end")
-        time.sleep(0.08)
-
-        if search_result_shown():
-            print("true")
-            return True
-        
-        pyautogui.typewrite(helper_char)
-        time.sleep(0.25)
-    return False
-
 if __name__ == "__main__":
+    from rich.console import Console, Group
+    from rich.panel import Panel
+    from rich.table import Table
+    from rich.prompt import Prompt
+    from rich.live import Live
+    from rich.spinner import Spinner
+    from rich.text import Text
+    from rich import box
+
+    console = Console()
+
+    SETTINGS_FILE = os.path.join(SCRIPT_DIR, "settings.json")
+
+    DEFAULT_SETTINGS = {
+        "threshold": PLAY_BUTTON_THRESHOLD,
+        "pixel_movement": PIXEL_MOVEMENT,
+        "generate_report": True,
+    }
+
+    def load_settings():
+        if not os.path.exists(SETTINGS_FILE):
+            return DEFAULT_SETTINGS.copy()
+
+        try:
+            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                settings = json.load(f)
+
+            return {
+                **DEFAULT_SETTINGS,
+                **settings,
+            }
+        except Exception:
+            return DEFAULT_SETTINGS.copy()
+
+    def save_settings(settings):
+        with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
+            json.dump(settings, f, indent=4)
+
+    settings = load_settings()
+
+    # Apply settings to the runtime values used by play detection/movement only.
+    PLAY_BUTTON_THRESHOLD = float(settings["threshold"])
+    PIXEL_MOVEMENT = int(settings["pixel_movement"])
+
+    def show_header():
+        console.clear()
+        logo = Text(
+            "\n".join(
+                [
+                    "████████╗██████╗ ██╗   ██╗███████╗ ██████╗██╗      ██████╗ ██╗   ██╗██████╗ ",
+                    "╚══██╔══╝██╔══██╗██║   ██║██╔════╝██╔════╝██║     ██╔═══██╗██║   ██║██╔══██╗",
+                    "   ██║   ██████╔╝██║   ██║█████╗  ██║     ██║     ██║   ██║██║   ██║██║  ██║",
+                    "   ██║   ██╔══██╗██║   ██║██╔══╝  ██║     ██║     ██║   ██║██║   ██║██║  ██║",
+                    "   ██║   ██║  ██║╚██████╔╝███████╗╚██████╗███████╗╚██████╔╝╚██████╔╝██████╔╝",
+                    "   ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚══════╝ ╚═════╝╚══════╝ ╚═════╝  ╚═════╝ ╚═════╝ ",
+                ]
+            ),
+            style="bold #69d2ff",
+        )
+        subtitle = Text("AUTOMATION CONSOLE -- Developed By BrainPan Innovations..", style="#9aa7b8")
+        divider = Text("─" * 86, style="#3f566e")
+
+        console.print(
+            Panel(
+                Group(logo, divider, subtitle),
+                subtitle="OpenCode-style Runner",
+                border_style="#4aa8d8",
+                box=box.HEAVY,
+                padding=(1, 2),
+            )
+        )
+
+    def show_settings():
+        global PLAY_BUTTON_THRESHOLD, PIXEL_MOVEMENT
+
+        while True:
+            show_header()
+
+            table = Table(title="Current Settings", show_header=True)
+            table.add_column("Setting", style="cyan")
+            table.add_column("Value", style="green")
+
+            table.add_row("Play Detection Threshold", str(settings["threshold"]))
+            table.add_row("Pixel Movement", f"{settings['pixel_movement']} px")
+            table.add_row(
+                "Generate Report",
+                "TRUE" if settings["generate_report"] else "FALSE",
+            )
+
+            console.print(table)
+            console.print()
+
+            console.print("[1] Change play detection threshold")
+            console.print("[2] Change pixel movement")
+            console.print("[3] Toggle report generation")
+            console.print("[4] Back")
+
+            choice = Prompt.ask("\nSelect option", choices=["1", "2", "3", "4"])
+
+            if choice == "1":
+                value = Prompt.ask(
+                    "Enter play detection threshold",
+                    default=str(settings["threshold"]),
+                )
+
+                try:
+                    value = float(value)
+                    if 0 < value <= 1:
+                        settings["threshold"] = value
+                        PLAY_BUTTON_THRESHOLD = value
+                        save_settings(settings)
+                        console.print(f"\n[green]Threshold updated to {value}[/green]")
+                        time.sleep(1)
+                    else:
+                        console.print("[red]Threshold must be between 0 and 1[/red]")
+                        time.sleep(1)
+                except ValueError:
+                    console.print("[red]Invalid number[/red]")
+                    time.sleep(1)
+
+            elif choice == "2":
+                value = Prompt.ask(
+                    "Enter pixel movement",
+                    default=str(settings["pixel_movement"]),
+                )
+
+                try:
+                    value = int(value)
+                    if value <= 0:
+                        console.print("[red]Pixel movement must be greater than 0[/red]")
+                        time.sleep(1)
+                        continue
+
+                    settings["pixel_movement"] = value
+                    PIXEL_MOVEMENT = value
+                    save_settings(settings)
+
+                    console.print(f"\n[green]Pixel movement updated to {value}px[/green]")
+                    time.sleep(1)
+                except ValueError:
+                    console.print("[red]Invalid number[/red]")
+                    time.sleep(1)
+
+            elif choice == "3":
+                settings["generate_report"] = not settings["generate_report"]
+                save_settings(settings)
+
+                state = "enabled" if settings["generate_report"] else "disabled"
+                console.print(f"\n[green]Report generation {state}[/green]")
+                time.sleep(1)
+
+            elif choice == "4":
+                break
+
+    def run_automation():
+        show_header()
+
+        console.print(
+            Panel(
+                (
+                    f"\n[cyan]Play Threshold:[/cyan] {settings['threshold']}"
+                    f"\n[cyan]Pixel Movement:[/cyan] {settings['pixel_movement']} px"
+                    f"\n[cyan]Generate Report:[/cyan] "
+                    f"{'TRUE' if settings['generate_report'] else 'FALSE'}\n"
+                ),
+                title="Run Configuration",
+                border_style="#3b82f6",
+                box=box.ROUNDED,
+            )
+        )
+
+        console.print()
+        console.print("[bold cyan]Starting new run...[/bold cyan]\n")
+
+        result = {"finished": False, "error": None}
+
+        def worker():
+            try:
+                search()
+                result["finished"] = True
+            except Exception as e:
+                result["error"] = e
+
+        import threading
+
+        thread = threading.Thread(target=worker)
+        thread.start()
+
+        with Live(
+            Spinner("dots", text=Text(" Observing automation...", style="cyan")),
+            console=console,
+            refresh_per_second=10,
+        ):
+            while thread.is_alive():
+                time.sleep(0.1)
+
+        if result["error"]:
+            console.print()
+            console.print(
+                Panel(
+                    f"[red]Automation failed[/red]\n\n{result['error']}",
+                    border_style="red",
+                )
+            )
+        else:
+            console.print()
+            console.print(
+                Panel(
+                    "[bold green]RUN COMPLETED SUCCESSFULLY[/bold green]",
+                    border_style="green",
+                )
+            )
+
+        if settings["generate_report"]:
+            console.print("\n[cyan]Report generation enabled.[/cyan]")
+
+        Prompt.ask("\nPress Enter to return to menu", default="")
+
+    def main_menu():
+        while True:
+            show_header()
+            console.print(
+                Panel(
+                    (
+                        "[bold #70d7ff][1][/bold #70d7ff] New Run\n"
+                        "[bold #70d7ff][2][/bold #70d7ff] Settings\n"
+                        "[bold #70d7ff][3][/bold #70d7ff] Exit"
+                    ),
+                    title="Main Menu",
+                    subtitle="Choose an action",
+                    border_style="#4aa8d8",
+                    box=box.HEAVY,
+                    padding=(1, 2),
+                )
+            )
+
+            choice = Prompt.ask("\nSelect option", choices=["1", "2", "3"])
+
+            if choice == "1":
+                run_automation()
+            elif choice == "2":
+                show_settings()
+            elif choice == "3":
+                console.print("\n[cyan]Goodbye.[/cyan]")
+                break
+
     try:
-        search()
-        print(f"✓ Success")
+        main_menu()
+    except KeyboardInterrupt:
+        console.print("\n\n[yellow]Automation interrupted by user.[/yellow]")
     except Exception as e:
-        print(f"✗ Error: {e}")
+        console.print(
+            Panel(
+                f"[red]Unexpected error[/red]\n\n{e}",
+                border_style="red",
+            )
+        )
     finally:
-        print("press enter to exit")
+        console.print("\n[dim]Press Enter to exit...[/dim]")
+        input()

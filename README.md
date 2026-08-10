@@ -1,9 +1,7 @@
 # TrueCloud Automation
-
 Desktop automation for TrueCloud camera search and preview workflows using computer vision and UI control in Python.
 
 ## Overview
-
 MedGenX automates repetitive TrueCloud operator actions such as launching the application, logging in, searching camera labels, selecting highlighted results, and opening playback or camera views. It is designed for repetitive operational checks where consistency and speed are critical.
 
 ## Problem Statement

@@ -38,8 +38,6 @@ def get_exe_path():
         json.dump({"path_exe": path}, f, indent=2)
     print(f"file path configured")
     return path
-
-
 def start_app_and_login():
     path_to_cloud=get_exe_path()
     if not path_to_cloud:
@@ -54,19 +52,39 @@ def start_app_and_login():
         return False
 
     
-def get_scale():
-    current_screen=pyautogui.size()
-    current_screen_width=current_screen[0]
-    refrence_width=REFRENCE_RESOLUTION[0]
-    scaling_factor=current_screen_width/refrence_width
-    return scaling_factor
+def get_scale() -> float:
+    current_screen = pyautogui.size()
+    current_screen_width = int(current_screen[0])
+
+    reference_width = int(REFRENCE_RESOLUTION[0])
+
+    return float(current_screen_width / reference_width)
 
 
-def upscale(image_template):
-    image=cv2.imread(image_template)
-    scale=get_scale()
-    resize_image=cv2.resize(image,None,fx=scale,fy=scale,interpolation=cv2.INTER_LINEAR)
-    resize_image_grey=cv2.cvtColor(resize_image, cv2.COLOR_BGR2GRAY)
+def upscale(image_template: str):
+    image = cv2.imread(image_template)
+
+    if image is None:
+        return None
+
+    scale: float = get_scale()
+
+    height, width = image.shape[:2]
+
+    new_width: int = int(width * scale)
+    new_height: int = int(height * scale)
+
+    resize_image = cv2.resize(
+        image,
+        (new_width, new_height),
+        interpolation=cv2.INTER_LINEAR
+    )
+
+    resize_image_grey = cv2.cvtColor(
+        resize_image,
+        cv2.COLOR_BGR2GRAY
+    )
+
     return resize_image_grey
 
 def center_cordinates(x,y,h,w):
@@ -126,3 +144,5 @@ def login_click():
     return False
 
 
+#8189034475
+#Test@123

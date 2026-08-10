@@ -1,0 +1,5 @@
+{
+    "threshold": 0.6,
+    "pixel_movement": 25,
+    "generate_report": false
+}
