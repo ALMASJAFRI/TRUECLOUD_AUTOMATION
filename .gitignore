@@ -4,7 +4,11 @@ log.txt
 logs/
 
 # Virtual environment
-envt/
+env/
+dist/
+logs/
+reports/
+build/
 
 # Notebook files
 *.ipynb
