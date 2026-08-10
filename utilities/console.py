@@ -22,6 +22,7 @@ PIXEL_MOVEMENT = 25
 
 SETTINGS_FILE = os.path.join(SCRIPT_DIR, "settings.json")
 
+
 def clear_terminal():
     subprocess.run(
         "cls" if os.name == "nt" else "clear",

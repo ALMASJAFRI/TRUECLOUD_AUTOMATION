@@ -233,4 +233,5 @@ if __name__ == "__main__":
                 border_style="red",
             )
         )
+        input("\nPress Enter to close...")
    
