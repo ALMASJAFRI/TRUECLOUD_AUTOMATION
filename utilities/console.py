@@ -13,6 +13,7 @@ from rich import box
 from truecloud import SCRIPT_DIR
 from utilities.capture import Set_Report_Generation
 from utilities.detection import set_check_images_view_delay
+from utilities.report_manager import save_report, stop_event
 
 console = Console()
 
@@ -246,13 +247,22 @@ def run_automation():
     thread = threading.Thread(target=worker)
     thread.start()
 
-    with Live(
-        Spinner("dots", text=Text(" Observing automation...", style="cyan")),
-        console=console,
-        refresh_per_second=10,
-    ):
-        while thread.is_alive():
-            time.sleep(0.1)
+    try:
+        with Live(
+            Spinner("dots", text=Text(" Observing automation...", style="cyan")),
+            console=console,
+            refresh_per_second=10,
+        ):
+            while thread.is_alive():
+                time.sleep(0.1)
+    except KeyboardInterrupt:
+        stop_event.set()
+        thread.join(timeout=10)
+        if settings["generate_report"]:
+            console.print("\n[yellow]Saving partial report...[/yellow]")
+            save_report(timeout=10)
+        console.print("[yellow]Automation stopped. Partial report saved.[/yellow]")
+        return
 
     if result["error"]:
         console.print()
@@ -272,7 +282,12 @@ def run_automation():
         )
 
     if settings["generate_report"]:
-        console.print("\n[cyan]Report generation enabled.[/cyan]")
+        console.print("\n[yellow]Report is generating, please wait...[/yellow]")
+        try:
+            save_report()
+        except KeyboardInterrupt:
+            console.print("\n[yellow]Interrupted during report generation, saving partial report...[/yellow]")
+            save_report(timeout=10)
 
     Prompt.ask("\nPress Enter to return to menu", default="")
 

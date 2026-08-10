@@ -8,7 +8,6 @@ from openpyxl.drawing.image import Image
 from utilities.OCR_Worker import waiting,OCR_Worker
 from utilities.OCR_Worker import _rows
 import threading
-
 VERBOSE_LOGS = False
 
 
@@ -40,6 +39,7 @@ COL_WIDTHS = [8, 18, 10, 60, 14, 14]
 
 _counter = 0
 _current = None
+stop_event = threading.Event()
 
 
 def _ensure():
@@ -72,9 +72,14 @@ def _write(ws, row, col, value):
     return cell
 
 
-def save_report():
-    waiting.join()
-    if not _rows:
+def save_report(timeout=None):
+    deadline = None if timeout is None else time.time() + timeout
+    while waiting.unfinished_tasks:
+        if deadline is not None and time.time() >= deadline:
+            break
+        time.sleep(0.1)
+    rows = list(_rows)
+    if not rows:
         log("[REPORT] No rows to save")
         return
     _ensure()
@@ -94,7 +99,7 @@ def save_report():
         ws.column_dimensions[get_column_letter(col_idx)].width = w
     ws.row_dimensions[1].height = 28
 
-    for i, r in enumerate(_rows):
+    for i, r in enumerate(rows):
         row = i + 2
         _write(ws, row, 1, i + 1)
         _write(ws, row, 2, r["id"])
@@ -116,4 +121,4 @@ def save_report():
 
     wb.save(path)
     log(f"[REPORT] Saved: {path}")
-    log(f"[REPORT] Total cameras: {len(_rows)}")
+    log(f"[REPORT] Total cameras: {len(rows)}")

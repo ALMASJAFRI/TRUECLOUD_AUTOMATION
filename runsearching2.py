@@ -114,6 +114,8 @@ def clickabove(x, y, h, w,first=False):
     pyautogui.click(cx+80,cy-8)
 
     while True:
+        if stop_event.is_set():
+            return False
         major_step, minor_step = _movement_steps()
         px, py = capture_view_play(
             cx + offset_x,
@@ -170,7 +172,9 @@ def get_to_final_step(cx, cy, offset_x, offset_y, max_steps=13):
     time.sleep(0.2)
 
     for i in range(max_steps):
-        
+        if stop_event.is_set():
+            return False
+
         px, py = capture_view_play(
             probe_x,
             probe_y,

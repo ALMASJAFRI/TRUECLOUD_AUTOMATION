@@ -2,11 +2,10 @@ import os
 import re
 import logging
 import warnings
-
 import cv2
 import numpy as np
 import easyocr
-
+seen={}
 warnings.filterwarnings("ignore")
 logging.getLogger("easyocr").setLevel(logging.ERROR)
 logging.getLogger("torch").setLevel(logging.ERROR)
@@ -154,4 +153,8 @@ def Get_ID(img):
                 if conf > max_conf:
                     max_conf = conf
                     best_text = number
+    if best_text in seen and seen[best_text] > max_conf:
+        return None, None
+    seen[best_text] = max_conf
+
     return best_text, max_conf

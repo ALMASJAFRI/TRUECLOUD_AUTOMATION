@@ -1,7 +1,6 @@
 from queue import Queue
 from utilities.OCR import Get_ID
 waiting=Queue()
-
 _rows = []
 _current = None
 
@@ -16,6 +15,8 @@ def OCR_Worker():
             recording=item["recording"]
             opened=item["opened"]
             id,conf=Get_ID(crop_bgr)
+            if id is None:
+                continue
             _rows.append({
                 "id": id,
                 "conf":conf,
