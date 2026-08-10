@@ -14,7 +14,7 @@ from truecloud import SCRIPT_DIR
 from utilities.capture import Set_Report_Generation
 from utilities.detection import set_check_images_view_delay
 from utilities.report_manager import save_report, stop_event
-
+import sys
 console = Console()
 
 PLAY_BUTTON_THRESHOLD = 0.6
@@ -321,4 +321,7 @@ def main_menu():
             show_settings()
         elif choice == "3":
             console.print("\n[cyan]Goodbye.[/cyan]")
-            break
+            time.sleep(3)
+            clear_terminal()
+            sys.exit(0)
+            return

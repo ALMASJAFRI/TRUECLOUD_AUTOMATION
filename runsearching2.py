@@ -233,6 +233,4 @@ if __name__ == "__main__":
                 border_style="red",
             )
         )
-    finally:
-        console.print("\n[dim]Press Enter to exit...[/dim]")
-        input()
+   
