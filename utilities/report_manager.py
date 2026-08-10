@@ -9,6 +9,13 @@ from utilities.OCR_Worker import waiting,OCR_Worker
 from utilities.OCR_Worker import _rows
 import threading
 
+VERBOSE_LOGS = False
+
+
+def log(message):
+    if VERBOSE_LOGS:
+        print(message)
+
 worker = threading.Thread(target=OCR_Worker,daemon=True)
 worker.start()
 
@@ -68,7 +75,7 @@ def _write(ws, row, col, value):
 def save_report():
     waiting.join()
     if not _rows:
-        print("[REPORT] No rows to save")
+        log("[REPORT] No rows to save")
         return
     _ensure()
 
@@ -108,5 +115,5 @@ def save_report():
         _write(ws, row, 6, r["opened"])
 
     wb.save(path)
-    print(f"[REPORT] Saved: {path}")
-    print(f"[REPORT] Total cameras: {len(_rows)}")
+    log(f"[REPORT] Saved: {path}")
+    log(f"[REPORT] Total cameras: {len(_rows)}")

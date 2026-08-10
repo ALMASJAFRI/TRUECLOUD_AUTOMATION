@@ -11,12 +11,19 @@ from utilities.report_manager import *
 from utilities.actions import *
 from utilities.capture import * 
 from utilities.detection import *
-from utilities.console import main_menu,load_settings
+from utilities.console import load_settings, main_menu,PLAY_BUTTON_THRESHOLD,PIXEL_MOVEMENT
 from truecloud import start_app_and_login,TEMPLATES_DIR,upscale,MATCHING_THRESHOLD,click,center_cordinates,SCRIPT_DIR
 ITEMS = ["NAIPURA,01-PANWARI"]
-PLAY_BUTTON_THRESHOLD = 0.6
-PIXEL_MOVEMENT = 25
+
+VERBOSE_LOGS = False
 settings = load_settings()
+
+
+def log(message):
+    if VERBOSE_LOGS:
+        print(message)
+
+
 def _movement_steps():
     major = max(1, int(PIXEL_MOVEMENT))
     minor = max(1, major // 3)
@@ -27,7 +34,7 @@ def search():
         for trying in range(1, 4):
             started = start_app_and_login()
             if started:
-                print("app started")
+                log("app started")
                 break
             raise FileExistsError("Failed to start app retrying..")
 
@@ -65,7 +72,7 @@ def clickabove(x, y, h, w,first=False):
     roi_y = max(0, y - 450)
     roi_h = 450
 
-    print(f"[DEBUG] ROI: x={roi_x}, y={roi_y}, w={roi_w}, h={roi_h}")
+    log(f"[DEBUG] ROI: x={roi_x}, y={roi_y}, w={roi_w}, h={roi_h}")
 
     hsv_img, offset = capture_list_area(
         roi_x=roi_x,
@@ -75,13 +82,13 @@ def clickabove(x, y, h, w,first=False):
     )
 
     if hsv_img is None:
-        print("[WARNING] Failed to capture list area")
+        log("[WARNING] Failed to capture list area")
         return False
 
     highlight = find_blue_highlight(hsv_img, offset=offset)
 
     if highlight is None:
-        print("[WARNING] No blue highlight found")
+        log("[WARNING] No blue highlight found")
         return False
 
     abs_x, abs_y, card_w, card_h = highlight
@@ -90,19 +97,19 @@ def clickabove(x, y, h, w,first=False):
 
     time.sleep(1)
 
-    print(f"[INFO] Clicking highlight at ({cx}, {cy})")
+    log(f"[INFO] Clicking highlight at ({cx}, {cy})")
     dx =abs(cx - x)
     dy = abs(cy - y)
     
-    print(f"[DEBUG] dx={dx}, dy={dy}")
+    log(f"[DEBUG] dx={dx}, dy={dy}")
 
 
     if abs(dx)<= 50:
         offset_x, offset_y = 80, +8
-        print("[INFO] Using alternate offset")
+        log("[INFO] Using alternate offset")
     else:
         offset_x, offset_y = 95, -17
-        print("[INFO] Using default offset")
+        log("[INFO] Using default offset")
 
     pyautogui.click(cx+80,cy-8)
 
@@ -115,8 +122,8 @@ def clickabove(x, y, h, w,first=False):
         )
 
         if px is None or py is None:
-            print("[INFO] No more play buttons found, exiting loop")
-            print("[INFO] Scrolling down 50px")
+            log("[INFO] No more play buttons found, exiting loop")
+            log("[INFO] Scrolling down 50px")
             if settings["generate_report"]:
                 end_cycle(False,False)
 
@@ -131,20 +138,20 @@ def clickabove(x, y, h, w,first=False):
         play_cx = px
         play_cy = py 
         
-        print(f"[INFO] Found play button at ({play_cx}, {play_cy}), clicking...")
+        log(f"[INFO] Found play button at ({play_cx}, {play_cy}), clicking...")
         click_twice(play_cx,play_cy)
         time.sleep(3)
         
         click_open_camera(initial=False)
         time.sleep(1.5)
         
-        print(f"[INFO] Re-clicking play button at ({play_cx}, {play_cy})")
+        log(f"[INFO] Re-clicking play button at ({play_cx}, {play_cy})")
 
         click_twice(play_cx,play_cy)
         
         time.sleep(1.5)
 
-        print("[INFO] Scrolling down 50px")
+        log("[INFO] Scrolling down 50px")
         pyautogui.scroll(-major_step)
         time.sleep(0.6)  
         if settings["generate_report"]:
@@ -171,7 +178,7 @@ def get_to_final_step(cx, cy, offset_x, offset_y, max_steps=13):
         )
 
         if px is None or py is None:
-            print(f"[INFO] step {i+1}: no play at probe ({probe_x},{probe_y}), moving probe down")
+            log(f"[INFO] step {i+1}: no play at probe ({probe_x},{probe_y}), moving probe down")
             if settings["generate_report"]:
                 end_cycle(False,False)
             probe_y += major_step
@@ -184,14 +191,14 @@ def get_to_final_step(cx, cy, offset_x, offset_y, max_steps=13):
 
         play_cx, play_cy = px, py
 
-        print(f"[INFO] step {i+1}: found play at ({play_cx}, {play_cy}), clicking...")
+        log(f"[INFO] step {i+1}: found play at ({play_cx}, {play_cy}), clicking...")
         click_twice(play_cx, play_cy)
         time.sleep(3)
 
         click_open_camera(initial=False)
         time.sleep(1.5)
 
-        print(f"[INFO] step {i+1}: re-clicking play at ({play_cx}, {play_cy})")
+        log(f"[INFO] step {i+1}: re-clicking play at ({play_cx}, {play_cy})")
         click_twice(play_cx, play_cy)
         time.sleep(1.5)
 

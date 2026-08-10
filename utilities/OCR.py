@@ -1,11 +1,25 @@
 import os
-import shutil
+import re
+import logging
+import warnings
+
 import cv2
 import numpy as np
 import easyocr
-import re
 
-reader = easyocr.Reader(['en'], gpu=True)
+warnings.filterwarnings("ignore")
+logging.getLogger("easyocr").setLevel(logging.ERROR)
+logging.getLogger("torch").setLevel(logging.ERROR)
+
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
+
+try:
+    import torch
+    USE_GPU = bool(torch.cuda.is_available())
+except Exception:
+    USE_GPU = False
+
+reader = easyocr.Reader(['en'], gpu=USE_GPU, verbose=False)
 
 
 def Get_ID(img):
@@ -14,8 +28,7 @@ def Get_ID(img):
     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
     if img is None:
-        print("Cannot read image")
-        return None,None
+        return None, None
 
     
     h, w = img.shape[:2]
@@ -106,8 +119,6 @@ def Get_ID(img):
         if max_conf >= 0.995:
             break
 
-        print(f"\nChecking {region_name}")
-
         for variant_name, image in variants.items():
 
         
@@ -140,14 +151,7 @@ def Get_ID(img):
 
                 number = m.group()
 
-                print(
-                    f"{variant_name:12s} | "
-                    f"{number:15s} | "
-                    f"{conf:.2f}"
-                )
-
                 if conf > max_conf:
                     max_conf = conf
                     best_text = number
-    print(best_text,max_conf)
     return best_text, max_conf

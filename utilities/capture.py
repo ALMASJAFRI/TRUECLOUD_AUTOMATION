@@ -9,6 +9,12 @@ import utilities.report_manager as report_manager
 
 CARD_HEIGHT = 52
 REPORT_GENERATION=True
+VERBOSE_LOGS = False
+
+
+def log(message):
+    if VERBOSE_LOGS:
+        print(message)
 
 def Set_Report_Generation(status):
     global REPORT_GENERATION
@@ -20,19 +26,19 @@ def Set_Report_Generation(status):
     
 
 def capture_list_area(roi_x=None, roi_y=None, roi_w=None, roi_h=None):
-    print(f"[DEBUG] Capturing list area...")
+    log(f"[DEBUG] Capturing list area...")
 
     try:
         screenshot = pyautogui.screenshot(region=(roi_x, roi_y, roi_w, roi_h))
         bgr = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
         hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
 
-        print(f"[DEBUG] Captured shape: {hsv.shape}")
+        log(f"[DEBUG] Captured shape: {hsv.shape}")
 
         return hsv, (roi_x, roi_y)
 
     except Exception as e:
-        print(f"[ERROR] Capture failed: {e}")
+        log(f"[ERROR] Capture failed: {e}")
         return None, None
 
 

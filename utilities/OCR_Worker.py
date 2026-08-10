@@ -23,7 +23,7 @@ def OCR_Worker():
                 "recording": "Yes" if recording else "No",
                 "opened": "Yes" if opened else "No",
             })
-        except Exception as e:
-            print("OCR Worker Error:", e)
+        except Exception:
+            pass
         finally:
             waiting.task_done()

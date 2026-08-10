@@ -7,6 +7,12 @@ import pyautogui
 from truecloud import TEMPLATES_DIR, upscale, center_cordinates
 
 CHECK_IMAGES_VIEW_DELAY = 0.5
+VERBOSE_LOGS = False
+
+
+def log(message):
+    if VERBOSE_LOGS:
+        print(message)
 
 
 def set_check_images_view_delay(delay):
@@ -22,14 +28,14 @@ def find_blue_highlight(hsv_img, offset=(0, 0)):
     if hsv_img is None:
         return None
 
-    print("[DEBUG] Searching for blue highlight...")
+    log("[DEBUG] Searching for blue highlight...")
 
     lower_blue = np.array([85, 80, 120], dtype=np.uint8)
     upper_blue = np.array([115, 255, 255], dtype=np.uint8)
 
     mask = cv2.inRange(hsv_img, lower_blue, upper_blue)
 
-    print(f"[DEBUG] Mask pixels: {np.count_nonzero(mask)}")
+    log(f"[DEBUG] Mask pixels: {np.count_nonzero(mask)}")
 
     kernel = np.ones((5, 5), np.uint8)
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
@@ -37,7 +43,7 @@ def find_blue_highlight(hsv_img, offset=(0, 0)):
 
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    print(f"[DEBUG] Contours found: {len(contours)}")
+    log(f"[DEBUG] Contours found: {len(contours)}")
 
     best = None
     best_area = 0
@@ -52,20 +58,20 @@ def find_blue_highlight(hsv_img, offset=(0, 0)):
                 best = (x, y, w, h)
 
     if best is None:
-        print("[DEBUG] No valid highlight found")
+        log("[DEBUG] No valid highlight found")
         return None
 
     x, y, w, h = best
     abs_x = x + offset[0]
     abs_y = y + offset[1]
 
-    print(f"[DEBUG] Highlight at ({abs_x}, {abs_y}), size=({w},{h})")
+    log(f"[DEBUG] Highlight at ({abs_x}, {abs_y}), size=({w},{h})")
 
     return (abs_x, abs_y, w, h)
 
 
 def search_result_shown():
-    print("got to see result in search_result_shown")
+    log("got to see result in search_result_shown")
     search_result = os.path.join(TEMPLATES_DIR, "search_result.png")
     resized_image = upscale(search_result)
 

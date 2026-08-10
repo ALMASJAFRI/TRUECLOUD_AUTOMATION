@@ -8,6 +8,13 @@ import pyperclip
 from truecloud import TEMPLATES_DIR, upscale, click, center_cordinates
 from utilities.detection import search_result_shown, check_images_view
 
+VERBOSE_LOGS = False
+
+
+def log(message):
+    if VERBOSE_LOGS:
+        print(message)
+
 
 def click_twice(x, y):
     for i in range(2):
@@ -20,8 +27,8 @@ def doubleclick(x, y, h, w):
     for clic in range(3):
         pyautogui.click(center[0], center[1])
         time.sleep(0.2)
-    print(f"[CLICKED] Element at {center}")
-    print("clicked")
+    log(f"[CLICKED] Element at {center}")
+    log("clicked")
     return True
 
 
@@ -58,7 +65,7 @@ def click_open_camera(initial=True):
 
 
 def write_to_search(text, x, y, h, w):
-    print(f"[TYPING] Writing: {text}")
+    log(f"[TYPING] Writing: {text}")
 
     text = str(text)
     time.sleep(0.1)
@@ -75,7 +82,7 @@ def write_to_search(text, x, y, h, w):
     text = splited[0] + "-" + splited[1][0:3]
     helper_char = splited[1][2:3]
 
-    print(splited)
+    log(splited)
     pyperclip.copy(text)
     time.sleep(0.2)
     pyautogui.hotkey("ctrl", "v")
@@ -89,21 +96,21 @@ def write_to_search(text, x, y, h, w):
 def nudge_search_until_result(x, y, h, w, helper_char):
     while True:
         if search_result_shown():
-            print("true")
+            log("true")
             return True
 
         doubleclick(x, y, h, w)
         pyautogui.press("backspace")
 
         if search_result_shown():
-            print("true")
+            log("true")
             return True
 
         pyautogui.press("end")
         time.sleep(0.08)
 
         if search_result_shown():
-            print("true")
+            log("true")
             return True
 
         pyautogui.typewrite(helper_char)

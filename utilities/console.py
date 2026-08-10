@@ -1,3 +1,7 @@
+import json
+import os
+import time
+import subprocess
 from rich.console import Console, Group
 from rich.panel import Panel
 from rich.table import Table
@@ -6,10 +10,35 @@ from rich.live import Live
 from rich.spinner import Spinner
 from rich.text import Text
 from rich import box
-from runsearching2 import *
+from truecloud import SCRIPT_DIR
+from utilities.capture import Set_Report_Generation
+from utilities.detection import set_check_images_view_delay
+
 console = Console()
 
+PLAY_BUTTON_THRESHOLD = 0.6
+PIXEL_MOVEMENT = 25
+
 SETTINGS_FILE = os.path.join(SCRIPT_DIR, "settings.json")
+
+def clear_terminal():
+    subprocess.run(
+        "cls" if os.name == "nt" else "clear",
+        shell=True,
+        check=False,
+    )
+def full_panel(content, title=None, subtitle=None, border_style="#4aa8d8", box_style=box.HEAVY, padding=(1, 2)):
+    width = max(70, console.width - 4)
+    return Panel(
+        content,
+        title=title,
+        subtitle=subtitle,
+        border_style=border_style,
+        box=box_style,
+        padding=padding,
+        width=width,
+        expand=True,
+    )
 
 DEFAULT_SETTINGS = {
     "threshold": PLAY_BUTTON_THRESHOLD,
@@ -45,7 +74,7 @@ PIXEL_MOVEMENT = int(settings["pixel_movement"])
 set_check_images_view_delay(settings.get("close_view_delay", 0.5))
 
 def show_header():
-    console.clear()
+    clear_terminal()
     logo = Text(
         "\n".join(
             [
@@ -63,11 +92,11 @@ def show_header():
     divider = Text("─" * 86, style="#3f566e")
 
     console.print(
-        Panel(
+        full_panel(
             Group(logo, divider, subtitle),
             subtitle="BrainPan Innovations",
             border_style="#4aa8d8",
-            box=box.HEAVY,
+            box_style=box.HEAVY,
             padding=(1, 2),
         )
     )
@@ -177,13 +206,15 @@ def show_settings():
             time.sleep(1)
 
         elif choice == "5":
-            break
+            return
 
 def run_automation():
+    from runsearching2 import search
+
     show_header()
 
     console.print(
-        Panel(
+        full_panel(
             (
                 f"\n[cyan]Play Threshold:[/cyan] {settings['threshold']}"
                 f"\n[cyan]Pixel Movement:[/cyan] {settings['pixel_movement']} px"
@@ -193,7 +224,8 @@ def run_automation():
             ),
             title="Run Configuration",
             border_style="#3b82f6",
-            box=box.ROUNDED,
+            box_style=box.ROUNDED,
+            padding=(1, 2),
         )
     )
 
@@ -248,7 +280,7 @@ def main_menu():
     while True:
         show_header()
         console.print(
-            Panel(
+            full_panel(
                 (
                     "[bold #70d7ff][1][/bold #70d7ff] New Run\n"
                     "[bold #70d7ff][2][/bold #70d7ff] Settings\n"
@@ -257,7 +289,7 @@ def main_menu():
                 title="Main Menu",
                 subtitle="Choose an action",
                 border_style="#4aa8d8",
-                box=box.HEAVY,
+                box_style=box.HEAVY,
                 padding=(1, 2),
             )
         )
