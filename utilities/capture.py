@@ -10,7 +10,7 @@ import utilities.report_manager as report_manager
 CARD_HEIGHT = 52
 REPORT_GENERATION=True
 
-def _Set_Report_Generation(status):
+def Set_Report_Generation(status):
     global REPORT_GENERATION
     try:
         REPORT_GENERATION=status
