@@ -226,6 +226,7 @@ if __name__ == "__main__":
         main_menu()
     except KeyboardInterrupt:
         console.print("\n\n[yellow]Automation interrupted by user.[/yellow]")
+        main_menu()
     except Exception as e:
         console.print(
             Panel(

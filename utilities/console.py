@@ -90,13 +90,13 @@ def show_header():
         ),
         style="bold #69d2ff",
     )
-    subtitle = Text("AUTOMATION CONSOLE -- Developed By BrainPan Innovations..", style="#9aa7b8")
+    subtitle = Text("AUTOMATION CONSOLE -- Reducing Manual Efforts..", style="#9aa7b8")
     divider = Text("─" * 86, style="#3f566e")
 
     console.print(
         full_panel(
             Group(logo, divider, subtitle),
-            subtitle="BrainPan Innovations",
+            subtitle="CLI Tool",
             border_style="#4aa8d8",
             box_style=box.HEAVY,
             padding=(1, 2),

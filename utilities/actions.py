@@ -4,17 +4,12 @@ import cv2
 import numpy as np
 import pyautogui
 import pyperclip
-
 from truecloud import TEMPLATES_DIR, upscale, click, center_cordinates
 from utilities.detection import search_result_shown, check_images_view
-
 VERBOSE_LOGS = False
-
-
 def log(message):
     if VERBOSE_LOGS:
         print(message)
-
 
 def click_twice(x, y):
     for i in range(2):
@@ -63,7 +58,6 @@ def click_open_camera(initial=True):
 
     return False
 
-
 def write_to_search(text, x, y, h, w):
     log(f"[TYPING] Writing: {text}")
 
@@ -89,9 +83,7 @@ def write_to_search(text, x, y, h, w):
     time.sleep(0.2)
 
     nudge_search_until_result(x, y, h, w, helper_char)
-
     return True
-
 
 def nudge_search_until_result(x, y, h, w, helper_char):
     while True:

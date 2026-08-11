@@ -1,6 +1,0 @@
-{
-    "threshold": 0.6,
-    "pixel_movement": 25,
-    "close_view_delay": 10.0,
-    "generate_report": true
-}

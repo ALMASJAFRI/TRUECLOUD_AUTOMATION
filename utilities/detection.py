@@ -20,7 +20,9 @@ def set_check_images_view_delay(delay):
 
     try:
         CHECK_IMAGES_VIEW_DELAY = max(0.0, float(delay))
-    except (TypeError, ValueError):
+        log(f"set for {float(delay)} is completed")
+    except (TypeError, ValueError) as e:
+        log(e)
         CHECK_IMAGES_VIEW_DELAY = 0.5
 
 
