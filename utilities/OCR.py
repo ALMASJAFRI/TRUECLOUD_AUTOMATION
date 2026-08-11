@@ -5,11 +5,11 @@ import warnings
 import cv2
 import numpy as np
 import easyocr
+
 seen={}
 warnings.filterwarnings("ignore")
 logging.getLogger("easyocr").setLevel(logging.ERROR)
 logging.getLogger("torch").setLevel(logging.ERROR)
-
 os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 
 try:
@@ -108,8 +108,8 @@ def Get_ID(img):
     h_gray = gray.shape[0]
 
     regions = {
-        "top": (0, h_gray // 3),
-        "middle": (h_gray // 3, 2 * h_gray // 2),
+        "top": (0, h_gray // 2),
+        "middle": (h_gray // 2, 2 * h_gray // 2),
     }
 
     for region_name, (s, e) in regions.items():
@@ -156,5 +156,4 @@ def Get_ID(img):
     if best_text in seen and seen[best_text] > max_conf:
         return None, None
     seen[best_text] = max_conf
-
     return best_text, max_conf
