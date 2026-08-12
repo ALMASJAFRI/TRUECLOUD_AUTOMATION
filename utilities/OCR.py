@@ -2,37 +2,70 @@ import os
 import re
 import logging
 import warnings
+
 import cv2
 import numpy as np
-import easyocr
 
-seen={}
+from rapidocr import RapidOCR
+# ---------------------------------------------------------
+# Logging
+# ---------------------------------------------------------
+
+seen = {}
+
 warnings.filterwarnings("ignore")
-logging.getLogger("easyocr").setLevel(logging.ERROR)
-logging.getLogger("torch").setLevel(logging.ERROR)
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
+logging.disable(logging.WARNING)
+logging.getLogger("rapidocr").setLevel(logging.ERROR)
+logging.getLogger("onnxruntime").setLevel(logging.ERROR)
 
-try:
-    import torch
-    USE_GPU = bool(torch.cuda.is_available())
-except Exception:
-    USE_GPU = False
 
-reader = easyocr.Reader(['en'], gpu=USE_GPU, verbose=False)
+# ---------------------------------------------------------
+# RapidOCR
+# ---------------------------------------------------------
 
+engine = RapidOCR(
+    params={
+        "EngineConfig.onnxruntime.intra_op_num_threads": 4,
+        "EngineConfig.onnxruntime.inter_op_num_threads": 1,
+
+        "Det.det_thresh": 0.2,
+        "Det.box_thresh": 0.3,
+
+        # Important
+        "Global.min_height": 30,
+        "Global.width_height_ratio": 8,
+    }
+)
+
+
+# ---------------------------------------------------------
+# GET ID
+# ---------------------------------------------------------
 
 def Get_ID(img):
+
     img = np.array(img)
-    
-    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
     if img is None:
         return None, None
 
-    
+    # -----------------------------------------------------
+    # RGB -> BGR
+    # -----------------------------------------------------
+
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
     h, w = img.shape[:2]
 
+    # -----------------------------------------------------
+    # Crop left side
+    # -----------------------------------------------------
+
     img = img[:, int(w * 0.32):]
+
+    # -----------------------------------------------------
+    # Resize
+    # -----------------------------------------------------
 
     img = cv2.resize(
         img,
@@ -44,31 +77,49 @@ def Get_ID(img):
 
     roi = img
 
-   
+    # -----------------------------------------------------
+    # Grayscale
+    # -----------------------------------------------------
+
     gray = cv2.cvtColor(
         roi,
         cv2.COLOR_BGR2GRAY
     )
 
+    # -----------------------------------------------------
+    # CLAHE
+    # -----------------------------------------------------
+
     clahe = cv2.createCLAHE(
         clipLimit=3,
-        tileGridSize=(8,8)
+        tileGridSize=(8, 8)
     )
 
-    clahe_gray = clahe.apply(gray)
-
     
+    clahe_gray = clahe.apply(gray)
+    
+    # -----------------------------------------------------
+    # Sharpen kernel
+    # -----------------------------------------------------
 
     kernel = np.array([
-        [0,-1,0],
-        [-1,5,-1],
-        [0,-1,0]
+        [0, -1, 0],
+        [-1, 5, -1],
+        [0, -1, 0]
     ])
+
+    # -----------------------------------------------------
+    # Median
+    # -----------------------------------------------------
 
     median = cv2.medianBlur(
         gray,
         5
     )
+
+    # -----------------------------------------------------
+    # Bilateral
+    # -----------------------------------------------------
 
     bilateral = cv2.bilateralFilter(
         gray,
@@ -77,30 +128,37 @@ def Get_ID(img):
         75
     )
 
+    # -----------------------------------------------------
+    # Erosion
+    # -----------------------------------------------------
+
     erosion = cv2.erode(
         gray,
-        np.ones((2,2), np.uint8),
+        np.ones((2, 2), np.uint8),
         iterations=1
     )
+
+    # -----------------------------------------------------
+    # Sharpen
+    # -----------------------------------------------------
 
     sharpen = cv2.filter2D(
         gray,
         -1,
         kernel
     )
+    # -----------------------------------------------------
+    # Same variants as your EasyOCR pipeline
+    # -----------------------------------------------------
 
     variants = {
         "gray": gray,
-        "clahe": clahe_gray,
-        "median": median,
-        "bilateral": bilateral,
-        "erosion": erosion,
-        "sharpen": sharpen
+        "clahe": clahe_gray
     }
 
-    # --------------------
+    # -----------------------------------------------------
     # OCR
-    # --------------------
+    # -----------------------------------------------------
 
     max_conf = 0
     best_text = None
@@ -109,51 +167,100 @@ def Get_ID(img):
 
     regions = {
         "top": (0, h_gray // 2),
-        "middle": (h_gray // 2, 2 * h_gray // 2),
+        "middle": (h_gray // 2, h_gray),
     }
+
+    # -----------------------------------------------------
+    # Region loop
+    # -----------------------------------------------------
 
     for region_name, (s, e) in regions.items():
 
-   
         if max_conf >= 0.995:
             break
 
         for variant_name, image in variants.items():
 
-        
             if max_conf >= 0.995:
                 break
 
             crop = image[s:e, :]
-          
 
-            results = reader.readtext(
-                crop,
-                contrast_ths=0.05,
-                adjust_contrast=0.8,
-                text_threshold=0.5,
-                low_text=0.2,
-                link_threshold=0.3,
-                detail=1,
-                paragraph=False,
-                allowlist="0123456789"
-            )
+            # -------------------------------------------------
+            # RapidOCR
+            # -------------------------------------------------
 
-            for bbox, text, conf in results:
-                conf=float(conf)
-                text = text.strip()
+            result = engine(
+                    crop,
+                    use_det=False,
+                    use_cls=False,
+                    use_rec=True
+                )
 
-                m = re.search(r"\d{10,}", text)
+            if result is None:
+                continue
+
+            # -------------------------------------------------
+            # RapidOCR result
+            #
+            # result.txts
+            # result.scores
+            # -------------------------------------------------
+
+            texts = result.txts
+            scores = result.scores
+
+            if texts is None or scores is None:
+                continue
+
+            # -------------------------------------------------
+            # Process OCR results
+            # -------------------------------------------------
+
+            for text, conf in zip(texts, scores):
+
+                if not text:
+                    continue
+
+                text = str(text).strip()
+                conf = float(conf)
+
+                # -------------------------------------------------
+                # Extract 10 or more consecutive digits
+                # -------------------------------------------------
+
+                m = re.search(
+                    r"\d{10,}",
+                    text
+                )
 
                 if not m:
                     continue
 
                 number = m.group()
 
+                # -------------------------------------------------
+                # Keep highest confidence result
+                # -------------------------------------------------
+
                 if conf > max_conf:
+
                     max_conf = conf
                     best_text = number
-    if best_text in seen and seen[best_text] > max_conf:
-        return None, None
-    seen[best_text] = max_conf
+
+    # ---------------------------------------------------------
+    # Duplicate protection
+    # ---------------------------------------------------------
+
+    if best_text is not None:
+
+        if best_text in seen and seen[best_text] > max_conf:
+            return None, None
+
+        seen[best_text] = max_conf
+
+    # ---------------------------------------------------------
+    # Return
+    # ---------------------------------------------------------
+
     return best_text, max_conf
