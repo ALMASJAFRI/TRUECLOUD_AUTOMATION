@@ -2,7 +2,6 @@ import os
 import re
 import logging
 import warnings
-
 import cv2
 import numpy as np
 
@@ -12,13 +11,12 @@ from rapidocr import RapidOCR
 # ---------------------------------------------------------
 
 seen = {}
-
 warnings.filterwarnings("ignore")
 logging.disable(logging.WARNING)
 logging.getLogger("rapidocr").setLevel(logging.ERROR)
 logging.getLogger("onnxruntime").setLevel(logging.ERROR)
 
-
+#buildex
 # ---------------------------------------------------------
 # RapidOCR
 # ---------------------------------------------------------
@@ -31,7 +29,6 @@ engine = RapidOCR(
         "Det.det_thresh": 0.2,
         "Det.box_thresh": 0.3,
 
-        # Important
         "Global.min_height": 30,
         "Global.width_height_ratio": 8,
     }
@@ -70,8 +67,8 @@ def Get_ID(img):
     img = cv2.resize(
         img,
         None,
-        fx=5,
-        fy=5,
+        fx=4,
+        fy=4,
         interpolation=cv2.INTER_CUBIC
     )
 
@@ -152,8 +149,10 @@ def Get_ID(img):
     # -----------------------------------------------------
 
     variants = {
+        "clahe": clahe_gray,
+        "sharpen":sharpen,
         "gray": gray,
-        "clahe": clahe_gray
+        "median":median
     }
 
     # -----------------------------------------------------
@@ -165,23 +164,25 @@ def Get_ID(img):
 
     h_gray = gray.shape[0]
 
+    overlap_ratio = 0.20
+    overlap = int(h_gray * overlap_ratio)
+
     regions = {
         "top": (0, h_gray // 2),
-        "middle": (h_gray // 2, h_gray),
+        "middle": (h_gray // 2 - overlap, h_gray),
     }
-
     # -----------------------------------------------------
     # Region loop
     # -----------------------------------------------------
 
     for region_name, (s, e) in regions.items():
 
-        if max_conf >= 0.995:
+        if max_conf >= 0.99:
             break
 
         for variant_name, image in variants.items():
 
-            if max_conf >= 0.995:
+            if max_conf >= 0.99:
                 break
 
             crop = image[s:e, :]
