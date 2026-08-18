@@ -33,8 +33,6 @@ engine = RapidOCR(
         "Global.width_height_ratio": 8,
     }
 )
-
-
 # ---------------------------------------------------------
 # GET ID
 # ---------------------------------------------------------
@@ -58,7 +56,7 @@ def Get_ID(img):
     # Crop left side
     # -----------------------------------------------------
 
-    img = img[:, int(w * 0.32):]
+    img = img[:, int(w * 0.30):]
 
     # -----------------------------------------------------
     # Resize
@@ -168,8 +166,7 @@ def Get_ID(img):
     overlap = int(h_gray * overlap_ratio)
 
     regions = {
-        "top": (0, h_gray // 2),
-        "middle": (h_gray // 2 - overlap, h_gray),
+        "middle": (h_gray // 2 - overlap, h_gray)
     }
     # -----------------------------------------------------
     # Region loop

@@ -9,10 +9,11 @@ import numpy as np
 import pyperclip
 from utilities.report_manager import *
 from utilities.actions import *
-from utilities.capture import * 
+from utilities.capture import *   # advance_one_card, wait_for_row_loaded
 from utilities.detection import *
-from utilities.console import load_settings, main_menu,PLAY_BUTTON_THRESHOLD,PIXEL_MOVEMENT
-from truecloud import start_app_and_login,TEMPLATES_DIR,upscale,MATCHING_THRESHOLD,click,center_cordinates,SCRIPT_DIR
+from utilities.console import load_settings, main_menu, PLAY_BUTTON_THRESHOLD
+from truecloud import start_app_and_login, TEMPLATES_DIR, upscale, MATCHING_THRESHOLD, click, center_cordinates, SCRIPT_DIR
+
 ITEMS = ["NAIPURA,01-PANWARI"]
 
 VERBOSE_LOGS = False
@@ -23,11 +24,6 @@ def log(message):
     if VERBOSE_LOGS:
         print(message)
 
-
-def _movement_steps():
-    major = max(1, int(PIXEL_MOVEMENT))
-    minor = max(1, major // 3)
-    return major, minor
 
 def search():
     try:
@@ -49,21 +45,24 @@ def search():
         if max_val >= MATCHING_THRESHOLD:
             x, y = max_loc
             h, w = resized_image.shape[:2]
-            click_open_camera()   
+            click_open_camera()
 
             click(x, y, h, w)
             time.sleep(0.15)
             write_to_search(ITEMS[0], x, y, h, w)
             clickbelow(x, y, h, w)
-            got_images=clickabove(x, y, h, w,first=True)
+            got_images = clickabove(x, y, h, w, first=True)
             time.sleep(1.5)
     except Exception:
         pass
 
-def clickabove(x, y, h, w,first=False):
 
-    time.sleep(0.5)
-
+def detect_current_highlight(y):
+    """
+    Detect the blue highlight's current position on screen.
+    Search in a window around anchor_cy (the last-known highlight position).
+    Returns (cx, cy, card_bottom_y, card_w) or None if not found.
+    """
     screen_w, screen_h = pyautogui.size()
 
     roi_x = 0
@@ -83,145 +82,136 @@ def clickabove(x, y, h, w,first=False):
 
     if hsv_img is None:
         log("[WARNING] Failed to capture list area")
-        return False
+        return None
 
     highlight = find_blue_highlight(hsv_img, offset=offset)
-
     if highlight is None:
-        log("[WARNING] No blue highlight found")
-        return False
+        return None
 
     abs_x, abs_y, card_w, card_h = highlight
     cx = abs_x + card_w // 2
     cy = abs_y + card_h // 2
+    card_bottom_y = abs_y + card_h
 
-    time.sleep(1)
-
-    log(f"[INFO] Clicking highlight at ({cx}, {cy})")
-    dx =abs(cx - x)
-    dy = abs(cy - y)
-    
-    log(f"[DEBUG] dx={dx}, dy={dy}")
+    return cx, cy, card_bottom_y, card_w
 
 
-    if abs(dx)<= 50:
-        offset_x, offset_y = 80, +8
+SCREENSHOT_DIFF_THRESHOLD = 0.2
+
+
+def _reached_end(prev_img, current_img):
+    """
+    End-of-list detection. Returns True when the current card screenshot is
+    essentially identical to the previous one (i.e. pressing Down changed
+    nothing), meaning every camera card has been scanned.
+    """
+    if prev_img is None or current_img is None:
+        return False
+
+    if prev_img.shape != current_img.shape:
+        return False
+
+    mean_diff = float(np.mean(cv2.absdiff(prev_img, current_img)))
+    log(f"[INFO] Card screenshot diff: {mean_diff:.2f}")
+
+    return mean_diff < SCREENSHOT_DIFF_THRESHOLD
+
+
+def clickabove(x, y, h, w, first=False):
+
+    time.sleep(0.5)
+
+    # Initial detection — establish offset_x based on first highlight position
+    detected = detect_current_highlight(y)
+    if detected is None:
+        log("[WARNING] No blue highlight found at start")
+        return False
+
+    cx, cy, card_bottom_y, card_w = detected
+
+    log(f"[INFO] Initial highlight at ({cx}, {cy})")
+    dx = abs(cx - x)
+
+    if abs(dx) <= 50:
+        offset_x = 80
         log("[INFO] Using alternate offset")
     else:
-        offset_x, offset_y = 95, -17
+        offset_x = 95
         log("[INFO] Using default offset")
 
-    pyautogui.click(cx+80,cy-8)
+    pyautogui.click(cx + 80, cy - 8)
+    time.sleep(1)
+
+    prev_img = None
 
     while True:
         if stop_event.is_set():
             return False
-        major_step, minor_step = _movement_steps()
-        px, py = capture_view_play(
+
+        # Capture using current highlight position (no stored cy, always fresh)
+        px, py, current_img = capture_view_play(
             cx + offset_x,
-            cy + offset_y,
+            card_bottom_y,
             threshold=PLAY_BUTTON_THRESHOLD
         )
+
+        if _reached_end(prev_img, current_img):
+            log("[INFO] Screenshot unchanged after movement, end of list reached")
+            break
+
+        prev_img = current_img
 
         if px is None or py is None:
             log("[INFO] No more play buttons found, exiting loop")
-            log("[INFO] Scrolling down 50px")
+            log("[INFO] Advancing to next card")
             if settings["generate_report"]:
-                end_cycle(False,False)
+                end_cycle(False, False)
 
-            pyautogui.scroll(-major_step)
-            time.sleep(0.7)
-            if_end=check_end()
-            if if_end:
-                get_to_final_step(cx, cy, offset_x, offset_y)
+            advance_one_card()
+
+            detected = detect_current_highlight(y)
+            if detected is None:
+                log("[WARNING] Lost highlight after advancing, treating as end of list")
                 break
+
+            cx, cy, card_bottom_y, card_w = detected
             continue
-        
+
         play_cx = px
-        play_cy = py 
-        
+        play_cy = py
+
         log(f"[INFO] Found play button at ({play_cx}, {play_cy}), clicking...")
-        click_twice(play_cx,play_cy)
+        click_twice(play_cx, play_cy)
         time.sleep(3)
-        
+
         click_open_camera(initial=False)
         time.sleep(1.5)
-        
+
         log(f"[INFO] Re-clicking play button at ({play_cx}, {play_cy})")
+        click_twice(play_cx, play_cy)
 
-        click_twice(play_cx,play_cy)
-        
-        time.sleep(1.5)
+        time.sleep(0.7)
 
-        log("[INFO] Scrolling down 50px")
-        pyautogui.scroll(-major_step)
-        time.sleep(0.6)  
+        log("[INFO] Advancing to next card")
+        advance_one_card()
+
+        # Re-detect highlight at new position
+        detected = detect_current_highlight(y)
+        if detected is not None:
+            cx, cy, card_bottom_y, card_w = detected
+        else:
+            log("[WARNING] Lost highlight after advancing, keeping last known position")
+
         if settings["generate_report"]:
-            end_cycle(True,True)
-        pyautogui.scroll(-minor_step)
-        time.sleep(0.4)
+            end_cycle(True, True)
+
     return True
 
-def get_to_final_step(cx, cy, offset_x, offset_y, max_steps=13):
-    major_step, minor_step = _movement_steps()
-    pyautogui.scroll(-major_step)
-    probe_x = cx + offset_x
-    probe_y = cy + offset_y
-
-    pyautogui.moveTo(probe_x, probe_y, duration=0.1)
-    time.sleep(0.2)
-
-    for i in range(max_steps):
-        if stop_event.is_set():
-            return False
-
-        px, py = capture_view_play(
-            probe_x,
-            probe_y,
-            threshold=PLAY_BUTTON_THRESHOLD
-        )
-
-        if px is None or py is None:
-            log(f"[INFO] step {i+1}: no play at probe ({probe_x},{probe_y}), moving probe down")
-            if settings["generate_report"]:
-                end_cycle(False,False)
-            probe_y += major_step
-            pyautogui.moveTo(probe_x, probe_y, duration=0.08)
-            time.sleep(0.25)
-            probe_y += minor_step
-            pyautogui.moveTo(probe_x, probe_y, duration=0.08)
-            time.sleep(0.35)
-            continue
-
-        play_cx, play_cy = px, py
-
-        log(f"[INFO] step {i+1}: found play at ({play_cx}, {play_cy}), clicking...")
-        click_twice(play_cx, play_cy)
-        time.sleep(3)
-
-        click_open_camera(initial=False)
-        time.sleep(1.5)
-
-        log(f"[INFO] step {i+1}: re-clicking play at ({play_cx}, {play_cy})")
-        click_twice(play_cx, play_cy)
-        time.sleep(1.5)
-
-        probe_y += major_step
-        pyautogui.moveTo(probe_x, probe_y, duration=0.08)
-        time.sleep(0.25)
-        if settings["generate_report"]:
-            end_cycle(True,True)
-        probe_y += minor_step
-        pyautogui.moveTo(probe_x, probe_y, duration=0.08)
-        time.sleep(0.35)
-
-    check_images_view()
-    return True
 
 if __name__ == "__main__":
     from rich.console import Console, Group
     from rich.panel import Panel
-    console=Console()
+    console = Console()
     try:
         main_menu()
     except KeyboardInterrupt:
@@ -235,4 +225,3 @@ if __name__ == "__main__":
             )
         )
         input("\nPress Enter to close...")
-   

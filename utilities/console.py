@@ -18,7 +18,6 @@ import sys
 console = Console()
 
 PLAY_BUTTON_THRESHOLD = 0.6
-PIXEL_MOVEMENT = 25
 
 SETTINGS_FILE = os.path.join(SCRIPT_DIR, "settings.json")
 
@@ -44,9 +43,9 @@ def full_panel(content, title=None, subtitle=None, border_style="#4aa8d8", box_s
 
 DEFAULT_SETTINGS = {
     "threshold": PLAY_BUTTON_THRESHOLD,
-    "pixel_movement": PIXEL_MOVEMENT,
     "close_view_delay": 0.5,
     "generate_report": True,
+    "mapper_file_path": "",
 }
 
 def load_settings():
@@ -68,11 +67,33 @@ def save_settings(settings):
     with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
         json.dump(settings, f, indent=4)
 
+def resolve_mapper_file():
+    from tkinter import filedialog
+
+    path = settings.get("mapper_file_path", "")
+
+    if path and os.path.exists(path):
+        return path
+
+    console.print("[yellow]Goashray mapper Excel file not found.[/yellow]")
+    console.print("[yellow]Please select the Goashray List Excel file.[/yellow]")
+
+    path = filedialog.askopenfilename(
+        title="SELECT GOASHRAY EXCEL",
+        filetypes=[("Excel files", "*.xlsx"), ("ALL files", "*.*")]
+    )
+
+    if not path or not os.path.exists(path):
+        raise FileNotFoundError("Goashray mapper Excel file is required")
+
+    settings["mapper_file_path"] = path
+    save_settings(settings)
+    return path
+
 settings = load_settings()
 
 # Apply settings to the runtime values used by play detection/movement only.
 PLAY_BUTTON_THRESHOLD = float(settings["threshold"])
-PIXEL_MOVEMENT = int(settings["pixel_movement"])
 set_check_images_view_delay(settings.get("close_view_delay", 0.5))
 
 def show_header():
@@ -104,7 +125,7 @@ def show_header():
     )
 
 def show_settings():
-    global PLAY_BUTTON_THRESHOLD, PIXEL_MOVEMENT
+    global PLAY_BUTTON_THRESHOLD
 
     while True:
         show_header()
@@ -114,8 +135,11 @@ def show_settings():
         table.add_column("Value", style="green")
 
         table.add_row("Play Detection Threshold", str(settings["threshold"]))
-        table.add_row("Pixel Movement", f"{settings['pixel_movement']} px")
         table.add_row("Close View Delay", f"{settings['close_view_delay']} s")
+        table.add_row(
+            "Mapper Excel Path",
+            settings.get("mapper_file_path", "") or "(not set)",
+        )
         table.add_row(
             "Generate Report",
             "TRUE" if settings["generate_report"] else "FALSE",
@@ -125,8 +149,8 @@ def show_settings():
         console.print()
 
         console.print("[1] Change play detection threshold")
-        console.print("[2] Change pixel movement")
-        console.print("[3] Change close view delay")
+        console.print("[2] Change close view delay")
+        console.print("[3] Set Goashray mapper Excel path")
         console.print("[4] Toggle report generation")
         console.print("[5] Back")
 
@@ -155,29 +179,6 @@ def show_settings():
 
         elif choice == "2":
             value = Prompt.ask(
-                "Enter pixel movement",
-                default=str(settings["pixel_movement"]),
-            )
-
-            try:
-                value = int(value)
-                if value <= 0:
-                    console.print("[red]Pixel movement must be greater than 0[/red]")
-                    time.sleep(1)
-                    continue
-
-                settings["pixel_movement"] = value
-                PIXEL_MOVEMENT = value
-                save_settings(settings)
-
-                console.print(f"\n[green]Pixel movement updated to {value}px[/green]")
-                time.sleep(1)
-            except ValueError:
-                console.print("[red]Invalid number[/red]")
-                time.sleep(1)
-
-        elif choice == "3":
-            value = Prompt.ask(
                 "Enter close view delay (seconds)",
                 default=str(settings["close_view_delay"]),
             )
@@ -199,6 +200,15 @@ def show_settings():
                 console.print("[red]Invalid number[/red]")
                 time.sleep(1)
 
+        elif choice == "3":
+            console.print("[yellow]Select the Goashray mapper Excel file.[/yellow]")
+            try:
+                path = resolve_mapper_file()
+                console.print(f"\n[green]Mapper Excel path set to:[/green] {path}")
+            except FileNotFoundError as e:
+                console.print(f"[red]{e}[/red]")
+            time.sleep(1)
+
         elif choice == "4":
             settings["generate_report"] = not settings["generate_report"]
             save_settings(settings)
@@ -211,15 +221,12 @@ def show_settings():
             return
 
 def run_automation():
-    from runsearching2 import search
-
     show_header()
 
     console.print(
         full_panel(
             (
                 f"\n[cyan]Play Threshold:[/cyan] {settings['threshold']}"
-                f"\n[cyan]Pixel Movement:[/cyan] {settings['pixel_movement']} px"
                 f"\n[cyan]Close View Delay:[/cyan] {settings['close_view_delay']} s"
                 f"\n[cyan]Generate Report:[/cyan] "
                 f"{'TRUE' if settings['generate_report'] else 'FALSE'}\n"
@@ -233,6 +240,14 @@ def run_automation():
 
     console.print()
     console.print("[bold cyan]Starting new run...[/bold cyan]\n")
+
+    from utilities.OCR_Worker import _set_mapper_file_path, start_worker
+
+    mapper_path = resolve_mapper_file()
+    _set_mapper_file_path(mapper_path)
+    start_worker()
+
+    from runsearching2 import search
 
     result = {"finished": False, "error": None}
 

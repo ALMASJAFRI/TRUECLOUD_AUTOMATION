@@ -1,22 +1,19 @@
 import os
-import time
+from datetime import datetime
 import cv2
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.drawing.image import Image
-from utilities.OCR_Worker import waiting,OCR_Worker
-from utilities.OCR_Worker import _rows
+from utilities.OCR_Worker import waiting, _rows, start_worker, _set_mapper_file_path
 import threading
+import time
 VERBOSE_LOGS = False
 
 
 def log(message):
     if VERBOSE_LOGS:
         print(message)
-
-worker = threading.Thread(target=OCR_Worker,daemon=True)
-worker.start()
 
 
 SCRIPT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -34,8 +31,28 @@ BORDER = Border(
     bottom=Side(style="thin", color="CCCCCC"),
 )
 IMG_SCALE = 0.7
-HEADERS = ["S.No", "CAMERA ID", "CONF", "SCREENSHOT", "RECORDING", "OPENED"]
-COL_WIDTHS = [8, 18, 10, 60, 14, 14]
+
+HEADERS = [
+    "S.No",
+    "CAMERA ID",
+    "Block",
+    "Gaushala",
+    "CONF",
+    "SCREENSHOT",
+    "RECORDING",
+    "OPENED"
+]
+
+COL_WIDTHS = [
+    8,      # S.No
+    18,     # CAMERA ID
+    20,     # Block
+    30,     # Gaushala
+    10,     # CONF
+    60,     # SCREENSHOT
+    14,     # RECORDING
+    14      # OPENED
+]
 
 _counter = 0
 _current = None
@@ -73,52 +90,248 @@ def _write(ws, row, col, value):
 
 
 def save_report(timeout=None):
-    deadline = None if timeout is None else time.time() + timeout
+
+    # =========================================================
+    # WAIT FOR OCR WORKER
+    # =========================================================
+
+    deadline = (
+        None
+        if timeout is None
+        else time.time() + timeout
+    )
+
     while waiting.unfinished_tasks:
-        if deadline is not None and time.time() >= deadline:
+
+        if (
+            deadline is not None
+            and time.time() >= deadline
+        ):
             break
+
         time.sleep(0.1)
+
+
+    # =========================================================
+    # GET OCR RESULTS
+    # =========================================================
+
     rows = list(_rows)
+
     if not rows:
+
         log("[REPORT] No rows to save")
+
         return
+
     _ensure()
 
-    path = os.path.join(REPORTS_DIR, f"report_{time.strftime('%Y%m%d_%H%M%S')}.xlsx")
+
+    # =========================================================
+    # REPORT PATH
+    # =========================================================
+
+    path = os.path.join(
+        REPORTS_DIR,
+        f"report_truecloud_automation_"
+        f"{datetime.now().strftime('%Y-%m-%d')}.xlsx"
+    )
+
+
+    # =========================================================
+    # CREATE WORKBOOK
+    # =========================================================
 
     wb = Workbook()
+
     ws = wb.active
+
     ws.title = "Camera Report"
 
-    for col_idx, (h, w) in enumerate(zip(HEADERS, COL_WIDTHS), 1):
-        cell = ws.cell(row=1, column=col_idx, value=h)
+
+    # =========================================================
+    # HEADERS
+    # =========================================================
+
+    for col_idx, (header, width) in enumerate(
+        zip(HEADERS, COL_WIDTHS),
+        1
+    ):
+
+        cell = ws.cell(
+            row=1,
+            column=col_idx,
+            value=header
+        )
+
         cell.font = HEADER_FONT
+
         cell.fill = HEADER_FILL
+
         cell.alignment = CENTER
+
         cell.border = BORDER
-        ws.column_dimensions[get_column_letter(col_idx)].width = w
+
+        ws.column_dimensions[
+            get_column_letter(col_idx)
+        ].width = width
+
+
     ws.row_dimensions[1].height = 28
 
+
+    # =========================================================
+    # DATA
+    # =========================================================
+
     for i, r in enumerate(rows):
+
         row = i + 2
-        _write(ws, row, 1, i + 1)
-        _write(ws, row, 2, r["id"])
-        _write(ws, row, 3, r["conf"])
 
-        img_path = os.path.join(SCREENSHOTS_DIR, r["screenshot"])
+
+        # -----------------------------------------------------
+        # S.NO
+        # -----------------------------------------------------
+
+        _write(
+            ws,
+            row,
+            1,
+            i + 1
+        )
+
+
+        # -----------------------------------------------------
+        # CAMERA ID
+        # -----------------------------------------------------
+
+        _write(
+            ws,
+            row,
+            2,
+            r["id"]
+        )
+
+
+        # -----------------------------------------------------
+        # BLOCK
+        # -----------------------------------------------------
+
+        _write(
+            ws,
+            row,
+            3,
+            r.get("block", "")
+        )
+
+
+        # -----------------------------------------------------
+        # GAUSHALA
+        # -----------------------------------------------------
+
+        _write(
+            ws,
+            row,
+            4,
+            r.get("gaushala", "")
+        )
+
+
+        # -----------------------------------------------------
+        # CONFIDENCE
+        # -----------------------------------------------------
+
+        _write(
+            ws,
+            row,
+            5,
+            r["conf"]
+        )
+
+
+        # -----------------------------------------------------
+        # SCREENSHOT
+        # -----------------------------------------------------
+
+        img_path = os.path.join(
+            SCREENSHOTS_DIR,
+            r["screenshot"]
+        )
+
+
         if os.path.exists(img_path):
-            img = Image(img_path)
-            img.width = int(img.width * IMG_SCALE)
-            img.height = int(img.height * IMG_SCALE)
-            ws.add_image(img, f"D{row}")
-            ws.row_dimensions[row].height = max(img.height + 8, 50)
-        else:
-            _write(ws, row, 4, "(file not found)")
-            ws.row_dimensions[row].height = 50
 
-        _write(ws, row, 5, r["recording"])
-        _write(ws, row, 6, r["opened"])
+            img = Image(img_path)
+
+            img.width = int(
+                img.width * IMG_SCALE
+            )
+
+            img.height = int(
+                img.height * IMG_SCALE
+            )
+
+            ws.add_image(
+                img,
+                f"F{row}"
+            )
+
+            ws.row_dimensions[
+                row
+            ].height = max(
+                img.height + 8,
+                50
+            )
+
+        else:
+
+            _write(
+                ws,
+                row,
+                6,
+                "(file not found)"
+            )
+
+            ws.row_dimensions[
+                row
+            ].height = 50
+
+
+        # -----------------------------------------------------
+        # RECORDING
+        # -----------------------------------------------------
+
+        _write(
+            ws,
+            row,
+            7,
+            r["recording"]
+        )
+
+
+        # -----------------------------------------------------
+        # OPENED
+        # -----------------------------------------------------
+
+        _write(
+            ws,
+            row,
+            8,
+            r["opened"]
+        )
+
+
+    # =========================================================
+    # SAVE
+    # =========================================================
 
     wb.save(path)
-    log(f"[REPORT] Saved: {path}")
-    log(f"[REPORT] Total cameras: {len(rows)}")
+
+
+    log(
+        f"[REPORT] Saved: {path}"
+    )
+
+    log(
+        f"[REPORT] Total cameras: {len(rows)}"
+    )
