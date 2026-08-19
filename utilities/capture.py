@@ -8,11 +8,10 @@ from truecloud import TEMPLATES_DIR, upscale
 import utilities.report_manager as report_manager
 
 CARD_HEIGHT = 52
+PLAY_BUTTON_THRESHOLD = 0.6
 REPORT_GENERATION = True
 VERBOSE_LOGS = False
 
-# Set this to your actual spinner/loading-icon template filename.
-# Put a cropped screenshot of the spinning "⟳" icon in TEMPLATES_DIR.
 SPINNER_TEMPLATE = "spinner.png"
 
 
@@ -27,6 +26,14 @@ def Set_Report_Generation(status):
         REPORT_GENERATION = status
     except (TypeError, ValueError):
         REPORT_GENERATION = False
+
+
+def set_play_button_threshold(value):
+    global PLAY_BUTTON_THRESHOLD
+    try:
+        PLAY_BUTTON_THRESHOLD = max(0.0, min(1.0, float(value)))
+    except (TypeError, ValueError):
+        PLAY_BUTTON_THRESHOLD = 0.6
 
 
 def capture_list_area(roi_x=None, roi_y=None, roi_w=None, roi_h=None):
@@ -83,7 +90,9 @@ def wait_for_row_loaded(timeout=2.0, poll=0.15):
     return False
 
 
-def capture_view_play(x, y, size=100, threshold=0.6, template_name="click_play.png", first=False):
+def capture_view_play(x, y, size=100, threshold=None, template_name="click_play.png", first=False):
+    if threshold is None:
+        threshold = PLAY_BUTTON_THRESHOLD
     size = int(size)
     screen_w, screen_h = pyautogui.size()
 
@@ -99,7 +108,6 @@ def capture_view_play(x, y, size=100, threshold=0.6, template_name="click_play.p
     screenshot = pyautogui.screenshot(region=(left, top, w, h))
     crop_bgr = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2BGR)
     crop_gray = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2GRAY)
-
     tpl_path = os.path.join(TEMPLATES_DIR, template_name)
     tpl = upscale(tpl_path)
     if tpl is None:

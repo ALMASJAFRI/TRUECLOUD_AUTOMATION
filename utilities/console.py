@@ -11,9 +11,10 @@ from rich.spinner import Spinner
 from rich.text import Text
 from rich import box
 from truecloud import SCRIPT_DIR
-from utilities.capture import Set_Report_Generation
+from utilities.capture import Set_Report_Generation, set_play_button_threshold
 from utilities.detection import set_check_images_view_delay
 from utilities.report_manager import save_report, stop_event
+from truecloud import set_After_Login_Delay
 import sys
 console = Console()
 
@@ -42,10 +43,11 @@ def full_panel(content, title=None, subtitle=None, border_style="#4aa8d8", box_s
     )
 
 DEFAULT_SETTINGS = {
-    "threshold": PLAY_BUTTON_THRESHOLD,
-    "close_view_delay": 0.5,
-    "generate_report": True,
-    "mapper_file_path": "",
+    "Play Button Threshold": PLAY_BUTTON_THRESHOLD,
+    "After Login Delay" : 0.2,
+    "Camera Close Delay": 0.5,
+    "Generate Report": True,
+    "Mapper File Path": "",
 }
 
 def load_settings():
@@ -70,7 +72,7 @@ def save_settings(settings):
 def resolve_mapper_file():
     from tkinter import filedialog
 
-    path = settings.get("mapper_file_path", "")
+    path = settings.get("Mapper File Path", "")
 
     if path and os.path.exists(path):
         return path
@@ -86,15 +88,15 @@ def resolve_mapper_file():
     if not path or not os.path.exists(path):
         raise FileNotFoundError("Goashray mapper Excel file is required")
 
-    settings["mapper_file_path"] = path
+    settings["Mapper File Path"] = path
     save_settings(settings)
     return path
 
 settings = load_settings()
 
 # Apply settings to the runtime values used by play detection/movement only.
-PLAY_BUTTON_THRESHOLD = float(settings["threshold"])
-set_check_images_view_delay(settings.get("close_view_delay", 0.5))
+set_play_button_threshold(float(settings["Play Button Threshold"]))
+set_check_images_view_delay(settings.get("Camera Close Delay", 0.5))
 
 def show_header():
     clear_terminal()
@@ -125,8 +127,6 @@ def show_header():
     )
 
 def show_settings():
-    global PLAY_BUTTON_THRESHOLD
-
     while True:
         show_header()
 
@@ -134,39 +134,41 @@ def show_settings():
         table.add_column("Setting", style="cyan")
         table.add_column("Value", style="green")
 
-        table.add_row("Play Detection Threshold", str(settings["threshold"]))
-        table.add_row("Close View Delay", f"{settings['close_view_delay']} s")
+        table.add_row("Play Detection Threshold", str(settings["Play Button Threshold"]))
+        table.add_row("After Login Delay", str(settings["After Login Delay"]))
+        table.add_row("Camera Close Delay", f"{settings['Camera Close Delay']} s")
         table.add_row(
             "Mapper Excel Path",
-            settings.get("mapper_file_path", "") or "(not set)",
+            settings.get("Mapper File Path", "") or "(not set)",
         )
         table.add_row(
             "Generate Report",
-            "TRUE" if settings["generate_report"] else "FALSE",
+            "TRUE" if settings["Generate Report"] else "FALSE",
         )
 
         console.print(table)
         console.print()
 
-        console.print("[1] Change play detection threshold")
-        console.print("[2] Change close view delay")
-        console.print("[3] Set Goashray mapper Excel path")
-        console.print("[4] Toggle report generation")
-        console.print("[5] Back")
+        console.print("[1] Change Play Button Threshold")
+        console.print("[2] Change After Login Delay")
+        console.print("[3] Change Camera Close Delay")
+        console.print("[4] Set Goashray mapper Excel path")
+        console.print("[5] Toggle Generate Report")
+        console.print("[6] Back")
 
-        choice = Prompt.ask("\nSelect option", choices=["1", "2", "3", "4", "5"])
+        choice = Prompt.ask("\nSelect option", choices=["1", "2", "3", "4", "5","6"])
 
         if choice == "1":
             value = Prompt.ask(
                 "Enter play detection threshold",
-                default=str(settings["threshold"]),
+                default=str(settings["Play Button Threshold"]),
             )
 
             try:
                 value = float(value)
                 if 0 < value <= 1:
-                    settings["threshold"] = value
-                    PLAY_BUTTON_THRESHOLD = value
+                    settings["Play Button Threshold"] = value
+                    set_play_button_threshold(value)
                     save_settings(settings)
                     console.print(f"\n[green]Threshold updated to {value}[/green]")
                     time.sleep(1)
@@ -179,8 +181,29 @@ def show_settings():
 
         elif choice == "2":
             value = Prompt.ask(
-                "Enter close view delay (seconds)",
-                default=str(settings["close_view_delay"]),
+                "Enter After Login Delay (seconds)",
+                default=str(settings["After Login Delay"]),
+            )
+            try:
+                value = float(value)
+                if value < 0:
+                    console.print("[red]Delay cannot be negative[/red]")
+                    time.sleep(1)
+                    continue
+
+                settings["After Login Delay"] = value
+                set_After_Login_Delay(value)
+                save_settings(settings)
+
+                console.print(f"\n[green]After login delay updated to {value}s[/green]")
+                time.sleep(1)
+            except ValueError:
+                console.print("[red]Invalid number[/red]")
+                time.sleep(1)
+        elif choice == "3":
+            value = Prompt.ask(
+                "Enter Camera Close Delay (seconds)",
+                default=str(settings["Camera Close Delay"]),
             )
 
             try:
@@ -190,7 +213,7 @@ def show_settings():
                     time.sleep(1)
                     continue
 
-                settings["close_view_delay"] = value
+                settings["Camera Close Delay"] = value
                 set_check_images_view_delay(value)
                 save_settings(settings)
 
@@ -200,7 +223,7 @@ def show_settings():
                 console.print("[red]Invalid number[/red]")
                 time.sleep(1)
 
-        elif choice == "3":
+        elif choice == "4":
             console.print("[yellow]Select the Goashray mapper Excel file.[/yellow]")
             try:
                 path = resolve_mapper_file()
@@ -209,15 +232,15 @@ def show_settings():
                 console.print(f"[red]{e}[/red]")
             time.sleep(1)
 
-        elif choice == "4":
-            settings["generate_report"] = not settings["generate_report"]
+        elif choice == "5":
+            settings["Generate Report"] = not settings["Generate Report"]
             save_settings(settings)
-            Set_Report_Generation(settings["generate_report"])
-            state = "enabled" if settings["generate_report"] else "disabled"
+            Set_Report_Generation(settings["Generate Report"])
+            state = "enabled" if settings["Generate Report"] else "disabled"
             console.print(f"\n[green]Report generation {state}[/green]")
             time.sleep(1)
 
-        elif choice == "5":
+        elif choice == "6":
             return
 
 def run_automation():
@@ -226,10 +249,11 @@ def run_automation():
     console.print(
         full_panel(
             (
-                f"\n[cyan]Play Threshold:[/cyan] {settings['threshold']}"
-                f"\n[cyan]Close View Delay:[/cyan] {settings['close_view_delay']} s"
+                f"\n[cyan]Play Threshold:[/cyan] {settings['Play Button Threshold']}"
+                f"\n[cyan]After Login Delay:[/cyan] {settings['After Login Delay']}"
+                f"\n[cyan]Camera Close Delay:[/cyan] {settings['Camera Close Delay']} s"
                 f"\n[cyan]Generate Report:[/cyan] "
-                f"{'TRUE' if settings['generate_report'] else 'FALSE'}\n"
+                f"{'TRUE' if settings['Generate Report'] else 'FALSE'}\n"
             ),
             title="Run Configuration",
             border_style="#3b82f6",
@@ -279,11 +303,12 @@ def run_automation():
                 ):
                     stop_event.set()
                     thread.join(timeout=10)
-                    if settings["generate_report"]:
+                    if settings["Generate Report"]:
                         console.print("\n[yellow]Saving partial report...[/yellow]")
                         save_report(timeout=10)
                     console.print("[yellow]Automation stopped. Partial report saved.[/yellow]")
                     return
+         
     if result["error"]:
         console.print()
         console.print(
@@ -301,7 +326,7 @@ def run_automation():
             )
         )
 
-    if settings["generate_report"]:
+    if settings["Generate Report"]:
         console.print("\n[yellow]Report is generating, please wait...[/yellow]")
         try:
             save_report()

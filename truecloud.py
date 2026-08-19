@@ -9,10 +9,16 @@ import numpy as np
 
 REFRENCE_RESOLUTION=(1920,1080)
 MATCHING_THRESHOLD=0.8
-
+AFTER_LOGIN_DELAY=0.2
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(SCRIPT_DIR, "templates")
 TRUECLOUD_NAME = os.path.join(SCRIPT_DIR, "config_file.json")
+
+def set_After_Login_Delay(value):
+    global AFTER_LOGIN_DELAY
+    AFTER_LOGIN_DELAY=value
+    
+
 def get_exe_path():
     path = os.path.exists(TRUECLOUD_NAME)
     if path:
@@ -108,8 +114,7 @@ def is_logged_in(timeout=60):
 
         if max_val >= MATCHING_THRESHOLD:
             return True
-
-        time.sleep(0.2)
+        time.sleep(AFTER_LOGIN_DELAY)
 
     return False
 

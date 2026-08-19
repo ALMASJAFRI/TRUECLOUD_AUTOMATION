@@ -9,15 +9,15 @@ import numpy as np
 import pyperclip
 from utilities.report_manager import *
 from utilities.actions import *
-from utilities.capture import *  
+from utilities.capture import *
+import utilities.capture as capture
 from utilities.detection import * 
-from utilities.console import load_settings, main_menu, PLAY_BUTTON_THRESHOLD
+from utilities.console import main_menu
 from truecloud import start_app_and_login, TEMPLATES_DIR, upscale, MATCHING_THRESHOLD, click, center_cordinates, SCRIPT_DIR
 
 ITEMS = ["NAIPURA,01-PANWARI"]
 
 VERBOSE_LOGS = False
-settings = load_settings()
 
 
 def log(message):
@@ -148,7 +148,6 @@ def clickabove(x, y, h, w, first=False):
         px, py, current_img = capture_view_play(
             cx + offset_x,
             card_bottom_y,
-            threshold=PLAY_BUTTON_THRESHOLD
         )
 
         if _reached_end(prev_img, current_img):
@@ -162,7 +161,7 @@ def clickabove(x, y, h, w, first=False):
         if px is None or py is None:
             log("[INFO] No more play buttons found, exiting loop")
             log("[INFO] Advancing to next card")
-            if settings["generate_report"]:
+            if capture.REPORT_GENERATION:
                 end_cycle(False, False)
 
             advance_one_card()
@@ -197,11 +196,9 @@ def clickabove(x, y, h, w, first=False):
         else:
             log("[WARNING] Lost highlight after advancing, keeping last known position")
 
-        if settings["generate_report"]:
+        if capture.REPORT_GENERATION:
             end_cycle(True, True)
-
     return True
-
 
 if __name__ == "__main__":
     from rich.console import Console, Group

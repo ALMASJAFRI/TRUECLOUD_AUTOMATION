@@ -1,6 +1,7 @@
 {
-    "threshold": 0.7,
-    "close_view_delay": 2.0,
-    "generate_report": true,
-    "mapper_file_path": "C:/Users/ALMAS JAFRI/Downloads/Goashray List 25-03-26 Download.xlsx"
+    "Play Button Threshold": 0.7,
+    "After Login Delay": 25.0,
+    "Camera Close Delay": 2.0,
+    "Generate Report": true,
+    "Mapper File Path": "C:/Users/ALMAS JAFRI/Downloads/Goashray List 25-03-26 Download.xlsx"
 }
