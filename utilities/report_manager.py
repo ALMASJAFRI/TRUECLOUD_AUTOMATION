@@ -34,9 +34,9 @@ IMG_SCALE = 0.7
 
 HEADERS = [
     "S.No",
-    "CAMERA ID",
     "Block",
     "Gaushala",
+    "CAMERA ID",
     "CONF",
     "SCREENSHOT",
     "RECORDING",
@@ -119,9 +119,7 @@ def save_report(timeout=None):
     rows = list(_rows)
 
     if not rows:
-
         log("[REPORT] No rows to save")
-
         return
 
     _ensure()
@@ -131,10 +129,14 @@ def save_report(timeout=None):
     # REPORT PATH
     # =========================================================
 
+    today = datetime.now()
+
+    date_display = today.strftime("%d/%m/%Y")
+
     path = os.path.join(
         REPORTS_DIR,
         f"report_truecloud_automation_"
-        f"{datetime.now().strftime('%Y-%m-%d')}.xlsx"
+        f"{today.strftime('%Y-%m-%d')}.xlsx"
     )
 
 
@@ -150,8 +152,77 @@ def save_report(timeout=None):
 
 
     # =========================================================
+    # COUNTS
+    # =========================================================
+
+    total_count = len(rows)
+
+    recording_count = sum(
+        1
+        for r in rows
+        if r.get("recording") == "Yes"
+    )
+
+    opened_count = sum(
+        1
+        for r in rows
+        if r.get("opened") == "Yes"
+    )
+
+    TOTAL_CAMERAS = 482
+
+    not_recording_count = (
+        TOTAL_CAMERAS - recording_count
+    )
+
+
+    # =========================================================
+    # ORANGE FILL
+    # =========================================================
+
+    ORANGE_FILL = PatternFill(
+        start_color="F4B183",
+        end_color="F4B183",
+        fill_type="solid"
+    )
+
+
+    # =========================================================
+    # TITLE
+    # =========================================================
+
+    ws.merge_cells("A1:H1")
+
+    title_cell = ws["A1"]
+
+    title_cell.value = (
+        f"TrueCloud Automation Report "
+        f"{date_display}"
+    )
+
+    title_cell.font = Font(
+        name="Segoe UI",
+        bold=True,
+        size=16
+    )
+
+    title_cell.fill = ORANGE_FILL
+
+    title_cell.alignment = Alignment(
+        horizontal="center",
+        vertical="center"
+    )
+
+    title_cell.border = BORDER
+
+    ws.row_dimensions[1].height = 35
+
+
+    # =========================================================
     # HEADERS
     # =========================================================
+
+    HEADER_ROW = 3
 
     for col_idx, (header, width) in enumerate(
         zip(HEADERS, COL_WIDTHS),
@@ -159,15 +230,19 @@ def save_report(timeout=None):
     ):
 
         cell = ws.cell(
-            row=1,
+            row=HEADER_ROW,
             column=col_idx,
             value=header
         )
 
-        cell.font = HEADER_FONT
+        cell.font = Font(
+                name="Segoe UI",
+                bold=True,
+                size=11,
+                color="000000"
+            )
 
-        cell.fill = HEADER_FILL
-
+        cell.fill = ORANGE_FILL
         cell.alignment = CENTER
 
         cell.border = BORDER
@@ -176,8 +251,9 @@ def save_report(timeout=None):
             get_column_letter(col_idx)
         ].width = width
 
-
-    ws.row_dimensions[1].height = 28
+    ws.row_dimensions[
+        HEADER_ROW
+    ].height = 28
 
 
     # =========================================================
@@ -186,8 +262,7 @@ def save_report(timeout=None):
 
     for i, r in enumerate(rows):
 
-        row = i + 2
-
+        row = i + HEADER_ROW + 1
 
         # -----------------------------------------------------
         # S.NO
@@ -200,7 +275,6 @@ def save_report(timeout=None):
             i + 1
         )
 
-
         # -----------------------------------------------------
         # CAMERA ID
         # -----------------------------------------------------
@@ -211,7 +285,6 @@ def save_report(timeout=None):
             2,
             r["id"]
         )
-
 
         # -----------------------------------------------------
         # BLOCK
@@ -224,7 +297,6 @@ def save_report(timeout=None):
             r.get("block", "")
         )
 
-
         # -----------------------------------------------------
         # GAUSHALA
         # -----------------------------------------------------
@@ -235,7 +307,6 @@ def save_report(timeout=None):
             4,
             r.get("gaushala", "")
         )
-
 
         # -----------------------------------------------------
         # CONFIDENCE
@@ -248,7 +319,6 @@ def save_report(timeout=None):
             r["conf"]
         )
 
-
         # -----------------------------------------------------
         # SCREENSHOT
         # -----------------------------------------------------
@@ -257,7 +327,6 @@ def save_report(timeout=None):
             SCREENSHOTS_DIR,
             r["screenshot"]
         )
-
 
         if os.path.exists(img_path):
 
@@ -296,7 +365,6 @@ def save_report(timeout=None):
                 row
             ].height = 50
 
-
         # -----------------------------------------------------
         # RECORDING
         # -----------------------------------------------------
@@ -307,7 +375,6 @@ def save_report(timeout=None):
             7,
             r["recording"]
         )
-
 
         # -----------------------------------------------------
         # OPENED
@@ -322,16 +389,131 @@ def save_report(timeout=None):
 
 
     # =========================================================
-    # SAVE
+    # REPORT RESULT
     # =========================================================
 
+    result_start_row = (
+        HEADER_ROW
+        + len(rows)
+        + 3
+    )
+
+
+    # =========================================================
+    # REPORT RESULT HEADING
+    # =========================================================
+
+    ws.merge_cells(
+        start_row=result_start_row,
+        start_column=1,
+        end_row=result_start_row,
+        end_column=8
+    )
+
+    result_title = ws.cell(
+        row=result_start_row,
+        column=1,
+        value=f"Report Result: {date_display}"
+    )
+
+    result_title.font = Font(
+        name="Segoe UI",
+        bold=True,
+        size=13
+    )
+
+    result_title.fill = ORANGE_FILL
+
+    result_title.alignment = Alignment(
+        horizontal="left",
+        vertical="center"
+    )
+
+    result_title.border = BORDER
+
+    ws.row_dimensions[
+        result_start_row
+    ].height = 28
+
+
+    # =========================================================
+    # REPORT RESULT TABLE HEADER
+    # =========================================================
+
+    result_header_row = result_start_row + 2
+
+    result_headers = [
+        "S.No",
+        "Summery",
+    ]
+
+    for col_idx, header in enumerate(
+        result_headers,
+        start=1
+    ):
+
+        cell = ws.cell(
+            row=result_header_row,
+            column=col_idx,
+            value=header
+        )
+
+        cell.font = Font(
+            name="Segoe UI",
+            bold=True,
+            size=11,
+            color="000000"
+        )
+
+
+        ws.column_dimensions["A"].width = 10
+        ws.column_dimensions["B"].width = 40
+
+        cell.fill = ORANGE_FILL
+
+        cell.alignment = CENTER
+
+        cell.border = BORDER
+
+
+    result_values = [
+        (
+            1,
+            f"Cameras ({total_count} / {TOTAL_CAMERAS})"
+        ),
+        (
+            2,
+            f"{opened_count} Cameras Opened"
+        ),
+        (
+            3,
+            f"{recording_count} Cameras Recording"
+        ),
+        (
+            4,
+            f"{not_recording_count} Not Recording"
+        ),
+    ]
+
+
+    result_row = result_header_row + 1
+
+    for serial_no, summery in result_values:
+
+
+        _write(
+            ws,
+            result_row,
+            1,
+            serial_no
+        )
+
+        _write(
+            ws,
+            result_row,
+            2,
+            summery
+        )
+
+        result_row += 1
     wb.save(path)
-
-
-    log(
-        f"[REPORT] Saved: {path}"
-    )
-
-    log(
-        f"[REPORT] Total cameras: {len(rows)}"
-    )

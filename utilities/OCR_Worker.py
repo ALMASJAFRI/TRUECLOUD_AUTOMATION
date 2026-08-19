@@ -11,7 +11,7 @@ _current = None
 Mapper_File_Path = None
 
 _worker_started = False
-
+_seen_camera_ids=set()
 
 def _set_mapper_file_path(mapper_path: str) -> None:
     global Mapper_File_Path
@@ -44,7 +44,6 @@ def OCR_Worker():
 
         try:
             if not item:
-
                 return
 
             crop_bgr = item["image"]
@@ -65,13 +64,20 @@ def OCR_Worker():
                 )
 
                 continue
+            if camera_id is None:
+                print("[OCR] Camera ID not detected")
+                continue
+
+            if camera_id in _seen_camera_ids:
+                print(f"[OCR] Camera ID {camera_id} already exists. Skipping.")
+                continue
 
             block = gaushala = None
 
             if camera_lookup is not None:
-                block, gaushala = camera_lookup.get(
-                    camera_id
-                )
+                block, gaushala = camera_lookup.get(camera_id)
+                block = block.title() if block else block
+                gaushala = gaushala.title() if gaushala else gaushala
 
             _rows.append({
 
@@ -98,12 +104,11 @@ def OCR_Worker():
                 ),
 
             })
-
+            _seen_camera_ids.add(camera_id)
         except Exception as e:
 
             print(
                 f"[OCR WORKER ERROR] {e}"
             )
         finally:
-
             waiting.task_done()
