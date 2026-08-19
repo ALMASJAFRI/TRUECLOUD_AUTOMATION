@@ -5,7 +5,7 @@ import numpy as np
 import pyautogui
 import pyperclip
 from truecloud import TEMPLATES_DIR, upscale, click, center_cordinates
-from utilities.detection import search_result_shown, check_images_view
+from utilities.detection import search_result_shown, check_images_view,check_Hybernated
 VERBOSE_LOGS = False
 def log(message):
     if VERBOSE_LOGS:
@@ -47,6 +47,8 @@ def click_open_camera(initial=True):
             h, w = resize.shape[:2]
             doubleclick(x - 120, y - 120, h, w)
             return True
+    if check_Hybernated():
+        return False
     if max_val >= 0.15:
         x, y = max_loc
         h, w = resize.shape[:2]
@@ -55,7 +57,6 @@ def click_open_camera(initial=True):
         image_saved = check_images_view()
         if image_saved:
             return True
-
     return False
 
 def write_to_search(text, x, y, h, w):

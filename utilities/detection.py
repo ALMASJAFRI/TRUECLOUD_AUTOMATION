@@ -71,6 +71,18 @@ def find_blue_highlight(hsv_img, offset=(0, 0)):
 
     return (abs_x, abs_y, w, h)
 
+def check_Hybernated():
+    template = os.path.join(TEMPLATES_DIR, "Hybernated.png")
+    resize = upscale(template)
+    screenshot_view = pyautogui.screenshot()
+    screenshot_cv = cv2.cvtColor(np.array(screenshot_view), cv2.COLOR_BGR2GRAY)
+
+    result = cv2.matchTemplate(screenshot_cv, resize, cv2.TM_CCOEFF_NORMED)
+    _, max_val, _, max_loc = cv2.minMaxLoc(result)
+    if max_val >= 0.8:
+        return True
+    return False
+
 
 def search_result_shown():
     search_result = os.path.join(TEMPLATES_DIR, "search_result.png")
