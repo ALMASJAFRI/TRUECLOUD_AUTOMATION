@@ -73,7 +73,6 @@ def find_blue_highlight(hsv_img, offset=(0, 0)):
 
 
 def search_result_shown():
-    log("got to see result in search_result_shown")
     search_result = os.path.join(TEMPLATES_DIR, "search_result.png")
     resized_image = upscale(search_result)
 

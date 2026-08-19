@@ -47,16 +47,9 @@ def capture_list_area(roi_x=None, roi_y=None, roi_w=None, roi_h=None):
 
 
 def advance_one_card(wait_after_press=0.35):
-    """
-    Move selection to the next card using the Down key.
-    One keypress = exactly one card — no pixel/scroll guessing.
-    Caller is responsible for ensuring the list has keyboard focus
-    (e.g. click the current row once before calling this if needed).
-    """
     pyautogui.press('down')
     time.sleep(wait_after_press)
     wait_for_row_loaded()
-
 
 def wait_for_row_loaded(timeout=2.0, poll=0.15):
     """

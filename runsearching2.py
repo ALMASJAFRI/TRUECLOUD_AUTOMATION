@@ -9,8 +9,8 @@ import numpy as np
 import pyperclip
 from utilities.report_manager import *
 from utilities.actions import *
-from utilities.capture import *   # advance_one_card, wait_for_row_loaded
-from utilities.detection import *
+from utilities.capture import *  
+from utilities.detection import * 
 from utilities.console import load_settings, main_menu, PLAY_BUTTON_THRESHOLD
 from truecloud import start_app_and_login, TEMPLATES_DIR, upscale, MATCHING_THRESHOLD, click, center_cordinates, SCRIPT_DIR
 
@@ -58,11 +58,7 @@ def search():
 
 
 def detect_current_highlight(y):
-    """
-    Detect the blue highlight's current position on screen.
-    Search in a window around anchor_cy (the last-known highlight position).
-    Returns (cx, cy, card_bottom_y, card_w) or None if not found.
-    """
+    
     screen_w, screen_h = pyautogui.size()
 
     roi_x = 0
@@ -157,6 +153,8 @@ def clickabove(x, y, h, w, first=False):
 
         if _reached_end(prev_img, current_img):
             log("[INFO] Screenshot unchanged after movement, end of list reached")
+            if check_end():
+                check_images_view()
             break
 
         prev_img = current_img
@@ -171,12 +169,9 @@ def clickabove(x, y, h, w, first=False):
 
             detected = detect_current_highlight(y)
             if detected is None:
-                log("[WARNING] Lost highlight after advancing, treating as end of list")
                 break
-
             cx, cy, card_bottom_y, card_w = detected
             continue
-
         play_cx = px
         play_cy = py
 
