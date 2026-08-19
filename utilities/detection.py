@@ -114,7 +114,7 @@ def check_end():
         return True
 
 
-def check_images_view():
+def check_images_view(end_call=False):
     template = os.path.join(TEMPLATES_DIR, "window_close.png")
     resize = upscale(template)
 
@@ -126,7 +126,10 @@ def check_images_view():
         _, max_val, _, max_loc = cv2.minMaxLoc(result)
 
         if max_val >= 0.50:
-            time.sleep(CHECK_IMAGES_VIEW_DELAY)
+            if end_call:
+                time.sleep(0.5)
+            else:
+                time.sleep(CHECK_IMAGES_VIEW_DELAY)
             x, y = max_loc
             h, w = resize.shape[:2]
             center = center_cordinates(x, y, h, w)

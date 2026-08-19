@@ -153,7 +153,7 @@ def clickabove(x, y, h, w, first=False):
         if _reached_end(prev_img, current_img):
             log("[INFO] Screenshot unchanged after movement, end of list reached")
             if check_end():
-                check_images_view()
+                check_images_view(end_call=True)
             break
 
         prev_img = current_img
