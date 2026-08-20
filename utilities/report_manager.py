@@ -45,9 +45,9 @@ HEADERS = [
 
 COL_WIDTHS = [
     8,      # S.No
-    18,     # CAMERA ID
     20,     # Block
     30,     # Gaushala
+    18,     # CAMERA ID
     10,     # CONF
     60,     # SCREENSHOT
     14,     # RECORDING
@@ -169,7 +169,7 @@ def save_report(timeout=None):
         if r.get("opened") == "Yes"
     )
 
-    TOTAL_CAMERAS = 482
+    TOTAL_CAMERAS = 481
 
     not_recording_count = (
         TOTAL_CAMERAS - recording_count
@@ -276,24 +276,13 @@ def save_report(timeout=None):
         )
 
         # -----------------------------------------------------
-        # CAMERA ID
-        # -----------------------------------------------------
-
-        _write(
-            ws,
-            row,
-            2,
-            r["id"]
-        )
-
-        # -----------------------------------------------------
         # BLOCK
         # -----------------------------------------------------
 
         _write(
             ws,
             row,
-            3,
+            2,
             r.get("block", "")
         )
 
@@ -304,8 +293,19 @@ def save_report(timeout=None):
         _write(
             ws,
             row,
-            4,
+            3,
             r.get("gaushala", "")
+        )
+
+        # -----------------------------------------------------
+        # CAMERA ID
+        # -----------------------------------------------------
+        
+        _write(
+            ws,
+            row,
+            4,
+            r["id"]
         )
 
         # -----------------------------------------------------
