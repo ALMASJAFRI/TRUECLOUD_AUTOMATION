@@ -113,9 +113,8 @@ def is_logged_in(timeout=60):
         _, max_val, _, _ = cv2.minMaxLoc(result)
 
         if max_val >= MATCHING_THRESHOLD:
+            time.sleep(AFTER_LOGIN_DELAY)
             return True
-        time.sleep(AFTER_LOGIN_DELAY)
-
     return False
 
 def click(x,y,h,w,to=None):
