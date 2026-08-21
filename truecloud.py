@@ -99,7 +99,7 @@ def center_cordinates(x,y,h,w):
     return (center_x, center_y)
 
 
-def is_logged_in(timeout=60):
+def is_logged_in(timeout=120):
     home = os.path.join(TEMPLATES_DIR, "Home.png")
     resized_image = upscale(home)
 
@@ -116,7 +116,6 @@ def is_logged_in(timeout=60):
             time.sleep(AFTER_LOGIN_DELAY)
             return True
     return False
-
 def click(x,y,h,w,to=None):
     center=center_cordinates(x,y,h,w)
     pyautogui.click(center[0], center[1])

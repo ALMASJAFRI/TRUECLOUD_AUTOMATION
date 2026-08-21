@@ -95,6 +95,7 @@ def resolve_mapper_file():
 settings = load_settings()
 
 # Apply settings to the runtime values used by play detection/movement only.
+set_After_Login_Delay(float(settings["After Login Delay"]))
 set_play_button_threshold(float(settings["Play Button Threshold"]))
 set_check_images_view_delay(settings.get("Camera Close Delay", 0.5))
 
