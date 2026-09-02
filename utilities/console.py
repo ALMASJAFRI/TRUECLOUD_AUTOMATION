@@ -272,7 +272,7 @@ def run_automation():
     _set_mapper_file_path(mapper_path)
     start_worker()
 
-    from runsearching2 import search
+    from TRUECLOUD_AUTOMATION.runsearching import search
 
     result = {"finished": False, "error": None}
 
